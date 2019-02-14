@@ -16,9 +16,13 @@ setup_protoc() {
 
 setup_mf() {
 	echo "Setup Mainflux..."
-	go get -d github.com/mainflux/mainflux
-	cd $GOPATH/src/github.com/mainflux/mainflux
+	MF_PATH=$GOPATH/src/github.com/mainflux/mainflux
+	mkdir -p $MF_PATH
+	cp -R ./ $MF_PATH
+	cd $MF_PATH
+	for p in $(ls *.pb.go); do mv $p $p.tmp; done
 	make proto
+	for p in $(ls *.pb.go); do echo "checking... $p $p.tmp"; if ! cmp -s $p $p.tmp; then echo "Proto files and generated Go files $p are out of cync!"; exit 1; fi done
 }
 
 setup() {
@@ -29,16 +33,17 @@ setup() {
 
 run_test() {
 	echo "Running tests..."
-	set -e; echo "" > coverage.txt; for d in $(go list ./... | grep -v 'vendor\|cmd'); do GOCACHE=off go test -v -race -tags test -coverprofile=profile.out -covermode=atomic $d; if [ -f profile.out ]; then cat profile.out >> coverage.txt; rm profile.out; fi done
+	echo "" > coverage.txt; for d in $(go list ./... | grep -v 'vendor\|cmd'); do GOCACHE=off go test -v -race -tags test -coverprofile=profile.out -covermode=atomic $d; if [ -f profile.out ]; then cat profile.out >> coverage.txt; rm profile.out; fi done
 }
 
 push() {
-	echo "Pushing Docker images..."
 	if test -n "$BRANCH_NAME" && test "$BRANCH_NAME" = "master"; then
+	echo "Pushing Docker images..."
 	make latest
 	fi
 }
 
+set -e
 setup
 run_test
 push
