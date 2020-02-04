@@ -31,9 +31,9 @@ func (pub *kafkaPublisher) Publish(_ context.Context, _ string, msg mainflux.Mes
 		return err
 	}
 
-	topic := fmt.Sprintf("%s/%s", prefix, msg.Channel)
+	topic := fmt.Sprintf("%s.%s", prefix, msg.Channel)
 	if msg.Subtopic != "" {
-		topic = fmt.Sprintf("%s/%s", topic, msg.Subtopic)
+		topic = fmt.Sprintf("%s.%s", topic, msg.Subtopic)
 	}
 	prodMsg := &sarama.ProducerMessage{
 		Topic: topic,
@@ -41,5 +41,4 @@ func (pub *kafkaPublisher) Publish(_ context.Context, _ string, msg mainflux.Mes
 	}
 	pub.prod.Input() <- prodMsg
 	return nil
-	// return pub.p.Publish(subject, data)
 }

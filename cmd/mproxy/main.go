@@ -126,6 +126,10 @@ func main() {
 			os.Exit(1)
 		}
 		kafkaPub := kafka.New(producer)
+		go func() {
+			err := <-producer.Errors()
+			logger.Warn(fmt.Sprintf("Error in Kafka producer: %s", err.Err))
+		}()
 		pubs = append(pubs, kafkaPub)
 	}
 
