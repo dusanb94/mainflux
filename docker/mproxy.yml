@@ -29,6 +29,7 @@ services:
       - emqx
       - things
       - nats
+      - kafka
     restart: on-failure
     environment:
       MF_MQTT_ADAPTER_LOG_LEVEL: ${MF_MQTT_ADAPTER_LOG_LEVEL}
@@ -40,8 +41,28 @@ services:
       MF_JAEGER_URL: ${MF_JAEGER_URL}
       MF_MQTT_ADAPTER_MQTT_TARGET_HOST: emqx
       MF_MQTT_ADAPTER_MQTT_TARGET_PORT: 1884
+      MF_KAFKA_BROKERS: kafka:9092
     ports:
-      - 18831:${MF_MQTT_ADAPTER_PORT}
+      - 8882:${MF_MQTT_ADAPTER_PORT}
       - 8881:${MF_MQTT_ADAPTER_WS_PORT}
+    networks:
+      - mainflux-base-net
+
+  zookeeper:
+    restart: on-failure
+    image: bitnami/zookeeper:latest
+    environment:
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+    networks:
+      - mainflux-base-net
+
+  kafka:
+    image: bitnami/kafka:latest
+    restart: on-failure
+    depends_on:
+      - zookeeper
+    environment:
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
     networks:
       - mainflux-base-net

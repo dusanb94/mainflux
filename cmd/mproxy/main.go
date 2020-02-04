@@ -117,16 +117,17 @@ func main() {
 	defer rc.Close()
 
 	es := mr.NewEventStore(rc, cfg.instance)
+	pubs := []mainflux.MessagePublisher{natsPub}
 
-	producer, err := sarama.NewAsyncProducer(cfg.brokers, cfg.producerConfig)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to start Kafka producer: %s", err))
-		os.Exit(1)
+	if len(cfg.brokers) > 0 {
+		producer, err := sarama.NewAsyncProducer(cfg.brokers, cfg.producerConfig)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed to start Kafka producer: %s", err))
+			os.Exit(1)
+		}
+		kafkaPub := kafka.New(producer)
+		pubs = append(pubs, kafkaPub)
 	}
-
-	kafkaPub := kafka.New(producer)
-
-	pubs := []mainflux.MessagePublisher{natsPub, kafkaPub}
 
 	// Event handler for MQTT hooks
 	evt := mqtt.New(cc, pubs, es, logger, tracer)
