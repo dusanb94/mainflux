@@ -31,18 +31,18 @@ var (
 // Event implements events.Event interface
 type Event struct {
 	tc     mainflux.ThingsServiceClient
-	mp     mainflux.MessagePublisher
+	pubs   []mainflux.MessagePublisher
 	tracer opentracing.Tracer
 	logger logger.Logger
 	es     redis.EventStore
 }
 
 // New creates new Event entity
-func New(tc mainflux.ThingsServiceClient, mp mainflux.MessagePublisher, es redis.EventStore,
+func New(tc mainflux.ThingsServiceClient, pubs []mainflux.MessagePublisher, es redis.EventStore,
 	logger logger.Logger, tracer opentracing.Tracer) *Event {
 	return &Event{
 		tc:     tc,
-		mp:     mp,
+		pubs:   pubs,
 		es:     es,
 		tracer: tracer,
 		logger: logger,
@@ -120,7 +120,7 @@ func (e *Event) AuthSubscribe(username, clientID string, topics *[]string) error
 	return nil
 }
 
-// Register - after client sucesfully connected
+// Register - after client successfully connected
 func (e *Event) Register(clientID string) {
 	e.logger.Info(fmt.Sprintf("Register() - clientID: %s", clientID))
 }
@@ -154,7 +154,7 @@ func parseSubtopic(subtopic string) (string, error) {
 	return subtopic, nil
 }
 
-// Publish - after client sucesfully published
+// Publish - after client successfully published
 func (e *Event) Publish(clientID, topic string, payload []byte) {
 	e.logger.Info(fmt.Sprintf("Publish() - clientID: %s, topic: %s", clientID, topic))
 	// Topics are in the format:
@@ -188,16 +188,20 @@ func (e *Event) Publish(clientID, topic string, payload []byte) {
 		Subtopic:    subtopic,
 		Payload:     payload,
 	}
-	e.mp.Publish(context.TODO(), "", msg)
+	for _, pub := range e.pubs {
+		if err := pub.Publish(context.TODO(), "", msg); err != nil {
+			e.logger.Warn(fmt.Sprintf("Failed to publish: %s", err))
+		}
+	}
 }
 
-// Subscribe - after client sucesfully subscribed
+// Subscribe - after client successfully subscribed
 func (e *Event) Subscribe(clientID string, topics []string) {
 	e.logger.Info(fmt.Sprintf("Subscribe() - clientID: %s, topics: %s", clientID, strings.Join(topics, ",")))
 }
 
-// Unubscribe - after client unsubscribed
+// Unsubscribe - after client unsubscribed
 func (e *Event) Unubscribe(clientID string, topics []string) {
 
-	e.logger.Info(fmt.Sprintf("Unubscribe() - clientID: %s, topics: %s", clientID, strings.Join(topics, ",")))
+	e.logger.Info(fmt.Sprintf("Unsubscribe() - clientID: %s, topics: %s", clientID, strings.Join(topics, ",")))
 }

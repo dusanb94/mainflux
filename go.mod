@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/DataDog/zstd v1.4.4 // indirect
+	github.com/Shopify/sarama v1.26.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/docker/docker v1.13.1
 	github.com/dustin/go-coap v0.0.0-20190908170653-752e0f79981e
@@ -25,6 +26,7 @@ require (
 	github.com/lib/pq v1.3.0
 	github.com/mainflux/mproxy v0.0.0-20200203145048-c6c91e2f34de
 	github.com/mainflux/senml v1.0.0
+	github.com/nats-io/nats-server/v2 v2.1.4 // indirect
 	github.com/nats-io/nats.go v1.9.1
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/prometheus/client_golang v1.3.0

@@ -8,13 +8,16 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/Shopify/sarama"
 	"github.com/go-redis/redis"
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/logger"
 	mqtt "github.com/mainflux/mainflux/mqtt/mproxy"
+	"github.com/mainflux/mainflux/mqtt/mproxy/kafka"
 	"github.com/mainflux/mainflux/mqtt/mproxy/nats"
 	mr "github.com/mainflux/mainflux/mqtt/mproxy/redis"
 	thingsapi "github.com/mainflux/mainflux/things/api/auth/grpc"
@@ -32,32 +35,35 @@ const (
 	defMQTTPort       = "1883"
 	defMQTTTargetHost = "0.0.0.0"
 	defMQTTTargetPort = "1884"
-	envMQTTHost       = "MF_MQTT_ADAPTER_MQTT_HOST"
-	envMQTTPort       = "MF_MQTT_ADAPTER_MQTT_PORT"
-	envMQTTTargetHost = "MF_MQTT_ADAPTER_MQTT_TARGET_HOST"
-	envMQTTTargetPort = "MF_MQTT_ADAPTER_MQTT_TARGET_PORT"
 	defLogLevel       = "error"
-	envLogLevel       = "MF_MQTT_ADAPTER_LOG_LEVEL"
 	defThingsURL      = "localhost:8181"
 	defThingsTimeout  = "1" // in seconds
-	envThingsURL      = "MF_THINGS_URL"
-	envThingsTimeout  = "MF_MQTT_ADAPTER_THINGS_TIMEOUT"
 	defNatsURL        = broker.DefaultURL
-	envNatsURL        = "MF_NATS_URL"
+	defInstance       = ""
 	defJaegerURL      = ""
 	envJaegerURL      = "MF_JAEGER_URL"
 	defClientTLS      = "false"
 	defCACerts        = ""
-	envClientTLS      = "MF_MQTT_ADAPTER_CLIENT_TLS"
-	envCACerts        = "MF_MQTT_ADAPTER_CA_CERTS"
-	envInstance       = "MF_MQTT_ADAPTER_INSTANCE"
-	defInstance       = ""
-	envESURL          = "MF_MQTT_ADAPTER_ES_URL"
-	envESPass         = "MF_MQTT_ADAPTER_ES_PASS"
-	envESDB           = "MF_MQTT_ADAPTER_ES_DB"
 	defESURL          = "localhost:6379"
 	defESPass         = ""
 	defESDB           = "0"
+	defKafkaBrokers   = "localhost:9092"
+
+	envMQTTHost       = "MF_MQTT_ADAPTER_MQTT_HOST"
+	envMQTTPort       = "MF_MQTT_ADAPTER_MQTT_PORT"
+	envMQTTTargetHost = "MF_MQTT_ADAPTER_MQTT_TARGET_HOST"
+	envMQTTTargetPort = "MF_MQTT_ADAPTER_MQTT_TARGET_PORT"
+	envNatsURL        = "MF_NATS_URL"
+	envLogLevel       = "MF_MQTT_ADAPTER_LOG_LEVEL"
+	envThingsURL      = "MF_THINGS_URL"
+	envThingsTimeout  = "MF_MQTT_ADAPTER_THINGS_TIMEOUT"
+	envClientTLS      = "MF_MQTT_ADAPTER_CLIENT_TLS"
+	envCACerts        = "MF_MQTT_ADAPTER_CA_CERTS"
+	envInstance       = "MF_MQTT_ADAPTER_INSTANCE"
+	envESURL          = "MF_MQTT_ADAPTER_ES_URL"
+	envESPass         = "MF_MQTT_ADAPTER_ES_PASS"
+	envESDB           = "MF_MQTT_ADAPTER_ES_DB"
+	envKafkaBrokers   = "MF_KAFKA_BROKERS" // separated by `, `
 )
 
 type config struct {
@@ -76,6 +82,8 @@ type config struct {
 	esURL          string
 	esPass         string
 	esDB           string
+	producerConfig *sarama.Config
+	brokers        []string
 }
 
 func main() {
@@ -103,15 +111,25 @@ func main() {
 	defer thingsCloser.Close()
 
 	cc := thingsapi.NewClient(conn, thingsTracer, cfg.thingsTimeout)
-	pub := nats.NewMessagePublisher(nc)
+	natsPub := nats.NewMessagePublisher(nc)
 
 	rc := connectToRedis(cfg.esURL, cfg.esPass, cfg.esDB, logger)
 	defer rc.Close()
 
 	es := mr.NewEventStore(rc, cfg.instance)
 
+	producer, err := sarama.NewAsyncProducer(cfg.brokers, cfg.producerConfig)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to start Kafka producer: %s", err))
+		os.Exit(1)
+	}
+
+	kafkaPub := kafka.New(producer)
+
+	pubs := []mainflux.MessagePublisher{natsPub, kafkaPub}
+
 	// Event handler for MQTT hooks
-	evt := mqtt.New(cc, pub, es, logger, tracer)
+	evt := mqtt.New(cc, pubs, es, logger, tracer)
 
 	errs := make(chan error, 2)
 
@@ -147,6 +165,9 @@ func loadConfig() config {
 		log.Fatalf("Invalid %s value: %s", envThingsTimeout, err.Error())
 	}
 
+	prodConfig := sarama.NewConfig()
+	brokers := mainflux.Env(envKafkaBrokers, defKafkaBrokers)
+
 	return config{
 		mqttHost:       mainflux.Env(envMQTTHost, defMQTTHost),
 		mqttPort:       mainflux.Env(envMQTTPort, defMQTTPort),
@@ -163,6 +184,8 @@ func loadConfig() config {
 		esURL:          mainflux.Env(envESURL, defESURL),
 		esPass:         mainflux.Env(envESPass, defESPass),
 		esDB:           mainflux.Env(envESDB, defESDB),
+		producerConfig: prodConfig,
+		brokers:        strings.Split(brokers, ","),
 	}
 }
 
