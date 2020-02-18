@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -48,6 +50,11 @@ const (
 	defESPass         = ""
 	defESDB           = "0"
 	defKafkaBrokers   = "localhost:9092"
+	defClientID       = "mproxy"
+	defKafkaTLS       = "false"
+	defKafkaCert      = ""
+	defKafkaKey       = ""
+	defKafkaCA        = ""
 
 	envMQTTHost       = "MF_MQTT_ADAPTER_MQTT_HOST"
 	envMQTTPort       = "MF_MQTT_ADAPTER_MQTT_PORT"
@@ -64,6 +71,11 @@ const (
 	envESPass         = "MF_MQTT_ADAPTER_ES_PASS"
 	envESDB           = "MF_MQTT_ADAPTER_ES_DB"
 	envKafkaBrokers   = "MF_KAFKA_BROKERS" // separated by `, `
+	envClientID       = "MF_KAFKA_CLIENT_ID"
+	envKafkaTLS       = "MF_KAFKA_CLIENT_TLS"
+	envKafkaCert      = "MF_KAFKA_CLIENT_CERT"
+	envKafkaKey       = "MF_KAFKA_CLIENT_KEY"
+	envKafkaCA        = "MF_KAFKA_CA_CERT"
 )
 
 type config struct {
@@ -160,7 +172,7 @@ func env(key, fallback string) string {
 }
 
 func loadConfig() config {
-	tls, err := strconv.ParseBool(mainflux.Env(envClientTLS, defClientTLS))
+	tlsEnable, err := strconv.ParseBool(mainflux.Env(envClientTLS, defClientTLS))
 	if err != nil {
 		log.Fatalf("Invalid value passed for %s\n", envClientTLS)
 	}
@@ -170,9 +182,9 @@ func loadConfig() config {
 		log.Fatalf("Invalid %s value: %s", envThingsTimeout, err.Error())
 	}
 
-	prodConfig := sarama.NewConfig()
-	brokers := mainflux.Env(envKafkaBrokers, defKafkaBrokers)
+	prodConfig := loadKafkaConfig()
 
+	brokers := mainflux.Env(envKafkaBrokers, defKafkaBrokers)
 	return config{
 		mqttHost:       mainflux.Env(envMQTTHost, defMQTTHost),
 		mqttPort:       mainflux.Env(envMQTTPort, defMQTTPort),
@@ -183,7 +195,7 @@ func loadConfig() config {
 		thingsURL:      mainflux.Env(envThingsURL, defThingsURL),
 		natsURL:        mainflux.Env(envNatsURL, defNatsURL),
 		logLevel:       mainflux.Env(envLogLevel, defLogLevel),
-		clientTLS:      tls,
+		clientTLS:      tlsEnable,
 		caCerts:        mainflux.Env(envCACerts, defCACerts),
 		instance:       mainflux.Env(envInstance, defInstance),
 		esURL:          mainflux.Env(envESURL, defESURL),
@@ -192,6 +204,44 @@ func loadConfig() config {
 		producerConfig: prodConfig,
 		brokers:        strings.Split(brokers, ","),
 	}
+}
+
+func loadKafkaConfig() *sarama.Config {
+	prodConfig := sarama.NewConfig()
+	prodConfig.Version = sarama.V1_0_0_0
+	prodConfig.ClientID = mainflux.Env(envClientID, defClientID)
+	prodConfig.ChannelBufferSize = 1024
+	prodConfig.Producer.RequiredAcks = sarama.WaitForAll
+	prodConfig.Producer.Compression = sarama.CompressionSnappy
+	prodConfig.Producer.Return.Successes = true
+
+	kafkaTLS, err := strconv.ParseBool(mainflux.Env(envKafkaTLS, defKafkaTLS))
+	if err != nil {
+		log.Fatalf("Invalid value passed for %s\n", envKafkaTLS)
+	}
+	if kafkaTLS {
+		tlsConfig := tls.Config{}
+
+		kafkaClientCert := mainflux.Env(envKafkaCert, defKafkaCert)
+		kafkaClientKey := mainflux.Env(envKafkaKey, defKafkaKey)
+		kafkaClientCA := mainflux.Env(envKafkaCA, defKafkaCA)
+		cert, err := tls.LoadX509KeyPair(kafkaClientCert, kafkaClientKey)
+		if err != nil {
+			log.Fatalf("Invalid cert and key pair: %s", err)
+		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+
+		if kafkaClientCA != "" {
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM([]byte(kafkaClientCA))
+			tlsConfig.RootCAs = caCertPool
+		}
+		tlsConfig.BuildNameToCertificate()
+
+		prodConfig.Net.TLS.Enable = true
+		prodConfig.Net.TLS.Config = &tlsConfig
+	}
+	return prodConfig
 }
 
 func initJaeger(svcName, url string, logger logger.Logger) (opentracing.Tracer, io.Closer) {
