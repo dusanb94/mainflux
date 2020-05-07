@@ -49,12 +49,6 @@ setup_protoc() {
 
 setup_mf() {
 	echo "Setting up Mainflux..."
-	MF_PATH=$GOPATH/src/github.com/mainflux/mainflux
-	if test $PWD != $MF_PATH; then
-		mkdir -p $MF_PATH
-		mv ./* $MF_PATH
-	fi
-	cd $MF_PATH
 	for p in $(ls *.pb.go); do
 		mv $p $p.tmp
 	done
