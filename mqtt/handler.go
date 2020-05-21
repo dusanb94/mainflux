@@ -6,6 +6,7 @@ package mqtt
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
@@ -23,6 +24,8 @@ var _ session.Handler = (*handler)(nil)
 
 const protocol = "mqtt"
 
+type publish func(msg messaging.Message) error
+
 var (
 	channelRegExp         = regexp.MustCompile(`^\/?channels\/([\w\-]+)\/messages(\/[^?]*)?(\?.*)?$`)
 	errMalformedTopic     = errors.New("malformed topic")
@@ -37,23 +40,35 @@ var (
 
 // Event implements events.Event interface
 type handler struct {
-	publishers []messaging.Publisher
-	tc         mainflux.ThingsServiceClient
-	tracer     opentracing.Tracer
-	logger     logger.Logger
-	es         redis.EventStore
+	// publishers []messaging.Publisher
+	tc     mainflux.ThingsServiceClient
+	tracer opentracing.Tracer
+	logger logger.Logger
+	es     redis.EventStore
+	pub    publish
+	// workers    []chan messaging.Message
 }
 
 // NewHandler creates new Handler entity
-func NewHandler(publishers []messaging.Publisher, tc mainflux.ThingsServiceClient, es redis.EventStore,
+func NewHandler(workers int, publishers []messaging.Publisher, tc mainflux.ThingsServiceClient, es redis.EventStore,
 	logger logger.Logger, tracer opentracing.Tracer) session.Handler {
-	return &handler{
-		tc:         tc,
-		es:         es,
-		tracer:     tracer,
-		logger:     logger,
-		publishers: publishers,
+	ret := &handler{
+		tc:     tc,
+		es:     es,
+		tracer: tracer,
+		logger: logger,
+		// publishers: publishers,
 	}
+	switch {
+	case workers > 0:
+		ret.pub = makeWorkersPub(ret, workers, publishers)
+	case workers == 0:
+		ret.pub = makeAsyncPub(ret, publishers)
+	default: // synchronized
+		ret.pub = makeSyncPub(ret, publishers)
+	}
+
+	return ret
 }
 
 // AuthConnect is called on device connection,
@@ -110,7 +125,6 @@ func (h *handler) AuthSubscribe(c *session.Client, topics *[]string) error {
 		if err := h.authAccess(c.Username, v); err != nil {
 			return err
 		}
-
 	}
 
 	return nil
@@ -159,9 +173,9 @@ func (h *handler) Publish(c *session.Client, topic *string, payload *[]byte) {
 		Created:   time.Now().UnixNano(),
 	}
 
-	for _, pub := range h.publishers {
-		if err := pub.Publish(msg.Channel, msg); err != nil {
-			h.logger.Info("Error publishing to Mainflux " + err.Error())
+	if h.pub != nil {
+		if err := h.pub(msg); err != nil {
+			h.logger.Info("Error publishing message " + err.Error())
 		}
 	}
 }
@@ -246,4 +260,50 @@ func parseSubtopic(subtopic string) (string, error) {
 
 	subtopic = strings.Join(filteredElems, ".")
 	return subtopic, nil
+}
+
+func makeSyncPub(h *handler, pubs []messaging.Publisher) publish {
+	return func(msg messaging.Message) error {
+		for _, pub := range pubs {
+			if err := pub.Publish(msg.Channel, msg); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+func makeAsyncPub(h *handler, pubs []messaging.Publisher) publish {
+	return func(msg messaging.Message) error {
+		go func() {
+			for i, pub := range pubs {
+				if err := pub.Publish(msg.Channel, msg); err != nil {
+					h.logger.Warn(fmt.Sprintf("Error for publisher %d: %s", i, err.Error()))
+				}
+			}
+		}()
+		return nil
+	}
+}
+
+func makeWorkersPub(h *handler, workers int, pubs []messaging.Publisher) publish {
+	ch := make(chan messaging.Message)
+	for i := 0; i < workers; i++ {
+		go h.do(pubs, ch)
+	}
+	return func(msg messaging.Message) error {
+		ch <- msg
+		return nil
+	}
+}
+
+func (h *handler) do(pubs []messaging.Publisher, ch chan messaging.Message) {
+	for {
+		msg := <-ch
+		for i, pub := range pubs {
+			if err := pub.Publish(msg.Channel, msg); err != nil {
+				h.logger.Warn(fmt.Sprintf("Error for publisher %d: %s", i, err.Error()))
+			}
+		}
+	}
 }

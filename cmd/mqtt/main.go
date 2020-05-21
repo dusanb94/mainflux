@@ -162,7 +162,7 @@ func main() {
 	es := mqttredis.NewEventStore(rc, cfg.instance)
 
 	// Event handler for MQTT hooks
-	h := mqtt.NewHandler([]messaging.Publisher{np}, cc, es, logger, tracer)
+	h := mqtt.NewHandler(2000, []messaging.Publisher{np}, cc, es, logger, tracer)
 
 	errs := make(chan error, 2)
 
