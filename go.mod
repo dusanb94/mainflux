@@ -29,6 +29,7 @@ require (
 	github.com/pelletier/go-toml v1.7.0
 	github.com/prometheus/client_golang v1.6.0
 	github.com/rubenv/sql-migrate v0.0.0-20200429072036-ae26b214fa43
+	github.com/segmentio/kafka-go v0.2.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.5.1
