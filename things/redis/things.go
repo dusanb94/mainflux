@@ -19,13 +19,13 @@ const (
 
 var (
 	// ErrRedisThingSave indicates error while saving Thing in redis cache
-	ErrRedisThingSave = errors.New("saving thing in redis cache error")
+	ErrRedisThingSave = errors.New("failed to save thing in redis cache")
 
 	// ErrRedisThingID indicates error while geting Thing ID from redis cache
-	ErrRedisThingID = errors.New("get thing id from redis cache error")
+	ErrRedisThingID = errors.New("failed to get thing id from redis cache")
 
 	// ErrRedisThingRemove indicates error while removing Thing from redis cache
-	ErrRedisThingRemove = errors.New("remove thing from redis cache error")
+	ErrRedisThingRemove = errors.New("failed to remove thing from redis cache")
 )
 
 var _ things.ThingCache = (*thingCache)(nil)
