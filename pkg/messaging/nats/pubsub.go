@@ -8,11 +8,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gogo/protobuf/proto"
-
 	log "github.com/mainflux/mainflux/logger"
 	"github.com/mainflux/mainflux/pkg/messaging"
 	broker "github.com/nats-io/nats.go"
+	"google.golang.org/protobuf/proto"
 )
 
 const chansPrefix = "channels"

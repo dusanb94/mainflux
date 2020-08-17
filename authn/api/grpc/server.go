@@ -19,6 +19,7 @@ import (
 var _ mainflux.AuthNServiceServer = (*grpcServer)(nil)
 
 type grpcServer struct {
+	mainflux.UnimplementedAuthNServiceServer
 	issue    kitgrpc.Handler
 	identify kitgrpc.Handler
 }

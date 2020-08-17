@@ -19,6 +19,7 @@ import (
 var _ mainflux.ThingsServiceServer = (*grpcServer)(nil)
 
 type grpcServer struct {
+	mainflux.UnimplementedThingsServiceServer
 	canAccessByKey kitgrpc.Handler
 	canAccessByID  kitgrpc.Handler
 	identify       kitgrpc.Handler

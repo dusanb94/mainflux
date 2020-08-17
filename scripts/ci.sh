@@ -1,10 +1,9 @@
 # This script contains commands to be executed by the CI tool.
 NPROC=$(nproc)
-GO_VERSION=1.14.4
-PROTOC_VERSION=3.11.4
-PROTOC_GEN_VERSION=v1.4.2
-PROTOC_GOFAST_VERSION=v1.3.1
-GRPC_VERSION=v1.29.1
+GO_VERSION=1.15
+PROTOC_VERSION=3.13.0
+PROTOC_GEN_VERSION=v1.25.0
+GRPC_VERSION=v1.31.0
 
 function version_gt() { test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"; }
 
@@ -15,6 +14,8 @@ update_go() {
         sudo rm -rf /usr/local/go
         sudo rm -rf /usr/local/golang
         sudo rm -rf /usr/bin/go
+        sudo rm -rf /usr/local/bin/go
+        sudo rm -rf /usr/local/golang
         wget https://dl.google.com/go/go$GO_VERSION.linux-amd64.tar.gz
         tar -xvf go$GO_VERSION.linux-amd64.tar.gz
         rm go$GO_VERSION.linux-amd64.tar.gz
@@ -42,9 +43,9 @@ setup_protoc() {
     sudo mv protoc3/include/* /usr/local/include/
     rm -f PROTOC_ZIP
 
-    go get -u github.com/golang/protobuf/protoc-gen-go@$PROTOC_GEN_VERSION \
-            github.com/gogo/protobuf/protoc-gen-gofast@$PROTOC_GOFAST_VERSION \
-            google.golang.org/grpc@$GRPC_VERSION
+    go get -u google.golang.org/protobuf/cmd/protoc-gen-go@$PROTOC_GEN_VERSION \
+        google.golang.org/grpc@$GRPC_VERSION \
+        google.golang.org/grpc/cmd/protoc-gen-go-grpc
 
     export PATH=$PATH:/usr/local/bin/protoc
     cd mainflux

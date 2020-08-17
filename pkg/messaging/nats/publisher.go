@@ -6,9 +6,9 @@ package nats
 import (
 	"fmt"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/mainflux/mainflux/pkg/messaging"
 	broker "github.com/nats-io/nats.go"
+	"google.golang.org/protobuf/proto"
 )
 
 var _ messaging.Publisher = (*publisher)(nil)

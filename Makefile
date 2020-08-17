@@ -10,6 +10,8 @@ DOCKERS = $(addprefix docker_,$(SERVICES))
 DOCKERS_DEV = $(addprefix docker_dev_,$(SERVICES))
 CGO_ENABLED ?= 0
 GOARCH ?= amd64
+# Generate relative to github.com/mainflux/mainflux.
+PROTO_PATH = ../../../
 
 define compile_service
 	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) go build -mod=vendor -ldflags "-s -w" -o ${BUILD_DIR}/mainflux-$(1) cmd/$(1)/main.go
@@ -71,8 +73,8 @@ test:
 	go test -mod=vendor -v -race -count 1 -tags test $(shell go list ./... | grep -v 'vendor\|cmd')
 
 proto:
-	protoc --gofast_out=plugins=grpc:. *.proto
-	protoc --gofast_out=plugins=grpc:. pkg/messaging/*.proto
+	protoc --go_out=./ --go_opt=paths=source_relative --go-grpc_out=./ --go-grpc_opt=paths=source_relative  *.proto
+	protoc --go_out=./ --go_opt=paths=source_relative pkg/messaging/*.proto
 
 $(SERVICES):
 	$(call compile_service,$(@))

@@ -3,6 +3,7 @@
 
 syntax = "proto3";
 package messaging;
+option go_package = "github.com/mainflux/mainflux/pkg/messaging";
 
 // Message represents a message emitted by the Mainflux adapters layer.
 message Message {
