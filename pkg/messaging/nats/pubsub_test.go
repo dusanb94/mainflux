@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	msgChan = make(chan messaging.Message)
+	msgChan = make(chan *messaging.Message)
 	data    = []byte("payload")
 )
 
@@ -78,7 +78,7 @@ func TestPubsub(t *testing.T) {
 	}
 }
 
-func handler(msg messaging.Message) error {
+func handler(msg *messaging.Message) error {
 	msgChan <- msg
 	return nil
 }

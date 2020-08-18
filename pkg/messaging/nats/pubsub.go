@@ -64,14 +64,14 @@ func NewPubSub(url, queue string, logger log.Logger) (PubSub, error) {
 }
 
 func (ps *pubsub) Publish(topic string, msg *messaging.Message) error {
-	data, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
 	subject := fmt.Sprintf("%s.%s", chansPrefix, topic)
 	if msg.Subtopic != "" {
 		subject = fmt.Sprintf("%s.%s", subject, msg.Subtopic)
+	}
+	data, err := proto.Marshal(msg)
+
+	if err != nil {
+		return err
 	}
 	if err := ps.conn.Publish(subject, data); err != nil {
 		return err

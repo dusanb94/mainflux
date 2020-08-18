@@ -39,35 +39,36 @@ func TestTransformJSON(t *testing.T) {
 
 	val := 52.0
 	sum := 110.0
-	msgs := []senml.Message{senml.Message{
-		Channel:    "channel",
-		Subtopic:   "subtopic",
-		Publisher:  "publisher",
-		Protocol:   "protocol",
-		Name:       "base-namename",
-		Unit:       "unit",
-		Time:       400,
-		UpdateTime: 150,
-		Value:      &val,
-		Sum:        &sum,
-	},
+	msgs := []senml.Message{
+		{
+			Channel:    "channel",
+			Subtopic:   "subtopic",
+			Publisher:  "publisher",
+			Protocol:   "protocol",
+			Name:       "base-namename",
+			Unit:       "unit",
+			Time:       400,
+			UpdateTime: 150,
+			Value:      &val,
+			Sum:        &sum,
+		},
 	}
 
 	cases := []struct {
 		desc string
-		msg  messaging.Message
+		msg  *messaging.Message
 		msgs interface{}
 		err  error
 	}{
 		{
 			desc: "test normalize JSON",
-			msg:  jsonPld,
+			msg:  &jsonPld,
 			msgs: msgs,
 			err:  nil,
 		},
 		{
 			desc: "test normalize defaults to JSON",
-			msg:  msg,
+			msg:  &msg,
 			msgs: msgs,
 			err:  nil,
 		},
@@ -126,19 +127,19 @@ func TestTransformCBOR(t *testing.T) {
 
 	cases := []struct {
 		desc string
-		msg  messaging.Message
+		msg  *messaging.Message
 		msgs interface{}
 		err  error
 	}{
 		{
 			desc: "test normalize CBOR",
-			msg:  cborPld,
+			msg:  &cborPld,
 			msgs: msgs,
 			err:  nil,
 		},
 		{
 			desc: "test invalid payload",
-			msg:  tooManyMsg,
+			msg:  &tooManyMsg,
 			msgs: nil,
 			err:  mfsenml.ErrTooManyValues,
 		},
