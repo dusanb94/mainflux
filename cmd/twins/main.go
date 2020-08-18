@@ -291,12 +291,12 @@ func newService(ps messaging.PubSub, chanID string, users mainflux.AuthNServiceC
 		}, []string{"method"}),
 	)
 
-	err := ps.Subscribe(nats.SubjectAllChannels, func(msg messaging.Message) error {
+	err := ps.Subscribe(nats.SubjectAllChannels, func(msg *messaging.Message) error {
 		if msg.Channel == chanID {
 			return nil
 		}
 
-		if err := svc.SaveStates(&msg); err != nil {
+		if err := svc.SaveStates(msg); err != nil {
 			logger.Error(fmt.Sprintf("State save failed: %s", err))
 			return err
 		}

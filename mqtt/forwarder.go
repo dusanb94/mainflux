@@ -41,7 +41,7 @@ func (f forwarder) Forward(sub messaging.Subscriber, pub messaging.Publisher) er
 }
 
 func (f forwarder) handle(pub messaging.Publisher) messaging.MessageHandler {
-	return func(msg messaging.Message) error {
+	return func(msg *messaging.Message) error {
 		if msg.Protocol == protocol {
 			return nil
 		}

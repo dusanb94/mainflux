@@ -233,7 +233,7 @@ func receive(svc coap.Service, msg *gocoap.Message) *gocoap.Message {
 		Created:   time.Now().UnixNano(),
 	}
 
-	if err := svc.Publish(m); err != nil {
+	if err := svc.Publish(&m); err != nil {
 		res.Code = gocoap.InternalServerError
 	}
 

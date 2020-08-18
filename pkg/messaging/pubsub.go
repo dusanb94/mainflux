@@ -6,11 +6,11 @@ package messaging
 // Publisher specifies message publishing API.
 type Publisher interface {
 	// Publishes message to the stream.
-	Publish(topic string, msg Message) error
+	Publish(topic string, msg *Message) error
 }
 
 // MessageHandler represents Message handler for Subscriber.
-type MessageHandler func(msg Message) error
+type MessageHandler func(msg *Message) error
 
 // Subscriber specifies message subscription API.
 type Subscriber interface {

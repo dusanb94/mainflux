@@ -36,8 +36,8 @@ func NewPublisher(url string) (Publisher, error) {
 	return ret, nil
 }
 
-func (pub *publisher) Publish(topic string, msg messaging.Message) error {
-	data, err := proto.Marshal(&msg)
+func (pub *publisher) Publish(topic string, msg *messaging.Message) error {
+	data, err := proto.Marshal(msg)
 	if err != nil {
 		return err
 	}

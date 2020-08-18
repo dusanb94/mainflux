@@ -12,10 +12,10 @@ import (
 	"github.com/mainflux/mainflux/pkg/messaging"
 )
 
-// Service specifies coap service API.
+// Service specifies http service API.
 type Service interface {
 	// Publish Messssage
-	Publish(ctx context.Context, token string, msg messaging.Message) error
+	Publish(ctx context.Context, token string, msg *messaging.Message) error
 }
 
 var _ Service = (*adapterService)(nil)
@@ -33,7 +33,7 @@ func New(publisher messaging.Publisher, things mainflux.ThingsServiceClient) Ser
 	}
 }
 
-func (as *adapterService) Publish(ctx context.Context, token string, msg messaging.Message) error {
+func (as *adapterService) Publish(ctx context.Context, token string, msg *messaging.Message) error {
 	ar := &mainflux.AccessByKeyReq{
 		Token:  token,
 		ChanID: msg.Channel,

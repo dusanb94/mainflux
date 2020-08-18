@@ -31,7 +31,7 @@ const (
 // Service specifies coap service API.
 type Service interface {
 	// Publish Messssage
-	Publish(msg messaging.Message) error
+	Publish(msg *messaging.Message) error
 
 	// Subscribes to channel with specified id, subtopic and adds subscription to
 	// service map of subscriptions under given ID.
@@ -108,7 +108,7 @@ func (svc *adapterService) listenResponses(responses <-chan string) {
 	}
 }
 
-func (svc *adapterService) Publish(msg messaging.Message) error {
+func (svc *adapterService) Publish(msg *messaging.Message) error {
 	return svc.ps.Publish(msg.Channel, msg)
 }
 
@@ -118,7 +118,7 @@ func (svc *adapterService) Subscribe(chanID, subtopic, obsID string, o *Observer
 		subject = fmt.Sprintf("%s.%s", chanID, subtopic)
 	}
 
-	err := svc.ps.Subscribe(subject, func(msg messaging.Message) error {
+	err := svc.ps.Subscribe(subject, func(msg *messaging.Message) error {
 		o.Messages <- msg
 		return nil
 	})

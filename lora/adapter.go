@@ -109,7 +109,7 @@ func (as *adapterService) Publish(ctx context.Context, token string, m Message) 
 		Created:   time.Now().UnixNano(),
 	}
 
-	return as.publisher.Publish(msg.Channel, msg)
+	return as.publisher.Publish(msg.Channel, &msg)
 }
 
 func (as *adapterService) CreateThing(thingID string, devEUI string) error {

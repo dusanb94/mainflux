@@ -63,7 +63,7 @@ func TestPubsub(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		expectedMsg := messaging.Message{
+		expectedMsg := &messaging.Message{
 			Channel:  tc.channel,
 			Subtopic: tc.subtopic,
 			Payload:  tc.payload,

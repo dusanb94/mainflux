@@ -51,7 +51,7 @@ func Start(sub messaging.Subscriber, repo MessageRepository, transformer transfo
 	return nil
 }
 
-func (c *consumer) handler(msg messaging.Message) error {
+func (c *consumer) handler(msg *messaging.Message) error {
 	t, err := c.transformer.Transform(msg)
 	if err != nil {
 		return err

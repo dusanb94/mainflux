@@ -25,7 +25,7 @@ type Observer struct {
 	expiredLock, msgIDLock sync.Mutex
 
 	// Messages is used to receive messages from NATS.
-	Messages chan messaging.Message
+	Messages chan *messaging.Message
 
 	// Cancel channel is used to cancel observing resource.
 	// Cancel channel should not be used to send or receive any
@@ -36,7 +36,7 @@ type Observer struct {
 // NewObserver instantiates a new Observer.
 func NewObserver() *Observer {
 	return &Observer{
-		Messages: make(chan messaging.Message),
+		Messages: make(chan *messaging.Message),
 		Cancel:   make(chan bool),
 	}
 }

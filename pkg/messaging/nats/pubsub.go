@@ -63,8 +63,8 @@ func NewPubSub(url, queue string, logger log.Logger) (PubSub, error) {
 	return ret, nil
 }
 
-func (ps *pubsub) Publish(topic string, msg messaging.Message) error {
-	data, err := proto.Marshal(&msg)
+func (ps *pubsub) Publish(topic string, msg *messaging.Message) error {
+	data, err := proto.Marshal(msg)
 	if err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func (ps *pubsub) natsHandler(h messaging.MessageHandler) broker.MsgHandler {
 			ps.logger.Warn(fmt.Sprintf("Failed to unmarshal received message: %s", err))
 			return
 		}
-		if err := h(msg); err != nil {
+		if err := h(&msg); err != nil {
 			ps.logger.Warn(fmt.Sprintf("Failed to handle Mainflux message: %s", err))
 		}
 	}
