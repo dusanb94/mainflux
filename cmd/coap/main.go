@@ -15,14 +15,13 @@ import (
 	"syscall"
 	"time"
 
-	gocoap "github.com/dustin/go-coap"
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/coap"
 	"github.com/mainflux/mainflux/coap/api"
+	gocoap "github.com/plgd-dev/go-coap/v2"
+
 	logger "github.com/mainflux/mainflux/logger"
-	"github.com/mainflux/mainflux/pkg/messaging/nats"
-	thingsapi "github.com/mainflux/mainflux/things/api/auth/grpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	jconfig "github.com/uber/jaeger-client-go/config"
@@ -31,7 +30,7 @@ import (
 )
 
 const (
-	defPort              = "5683"
+	defPort              = "5688"
 	defNatsURL           = "nats://localhost:4222"
 	defLogLevel          = "error"
 	defClientTLS         = "false"
@@ -72,23 +71,23 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	conn := connectToThings(cfg, logger)
-	defer conn.Close()
+	// conn := connectToThings(cfg, logger)
+	// defer conn.Close()
 
-	thingsTracer, thingsCloser := initJaeger("things", cfg.jaegerURL, logger)
-	defer thingsCloser.Close()
+	// thingsTracer, thingsCloser := initJaeger("things", cfg.jaegerURL, logger)
+	// defer thingsCloser.Close()
 
-	cc := thingsapi.NewClient(conn, thingsTracer, cfg.thingsAuthTimeout)
-	respChan := make(chan string, 10000)
+	// cc := thingsapi.NewClient(conn, thingsTracer, cfg.thingsAuthTimeout)
+	// respChan := make(chan string, 10000)
 
-	pubSub, err := nats.NewPubSub(cfg.natsURL, "", logger)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to connect to NATS: %s", err))
-		os.Exit(1)
-	}
-	defer pubSub.Close()
+	// pubSub, err := nats.NewPubSub(cfg.natsURL, "", logger)
+	// if err != nil {
+	// 	logger.Error(fmt.Sprintf("Failed to connect to NATS: %s", err))
+	// 	os.Exit(1)
+	// }
+	// defer pubSub.Close()
 
-	svc := coap.New(pubSub, logger, cc, respChan)
+	svc := coap.New(logger)
 
 	svc = api.LoggingMiddleware(svc, logger)
 
@@ -111,7 +110,7 @@ func main() {
 	errs := make(chan error, 2)
 
 	go startHTTPServer(cfg.port, logger, errs)
-	go startCOAPServer(cfg, svc, cc, respChan, logger, errs)
+	go startCOAPServer(cfg, svc, nil, logger, errs)
 
 	go func() {
 		c := make(chan os.Signal)
@@ -210,8 +209,10 @@ func startHTTPServer(port string, logger logger.Logger, errs chan error) {
 	errs <- http.ListenAndServe(p, api.MakeHTTPHandler())
 }
 
-func startCOAPServer(cfg config, svc coap.Service, auth mainflux.ThingsServiceClient, respChan chan<- string, l logger.Logger, errs chan error) {
+func startCOAPServer(cfg config, svc coap.Service, auth mainflux.ThingsServiceClient, l logger.Logger, errs chan error) {
 	p := fmt.Sprintf(":%s", cfg.port)
 	l.Info(fmt.Sprintf("CoAP adapter service started, exposed port %s", cfg.port))
-	errs <- gocoap.ListenAndServe("udp", p, api.MakeCOAPHandler(svc, auth, l, respChan, cfg.pingPeriod))
+	r := api.MakeCoAPHandler(svc)
+	// errs <- gocoap.ListenAndServe("udp", p, api.MakeCOAPHandler(svc, auth, l, respChan, cfg.pingPeriod))
+	errs <- gocoap.ListenAndServe("udp", p, r)
 }

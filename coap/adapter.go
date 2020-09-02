@@ -52,16 +52,16 @@ type adapterService struct {
 }
 
 // New instantiates the CoAP adapter implementation.
-func New(ps messaging.PubSub, log logger.Logger, auth mainflux.ThingsServiceClient, responses <-chan string) Service {
+func New(log logger.Logger) Service {
 	as := &adapterService{
-		auth:    auth,
-		ps:      ps,
-		log:     log,
-		obs:     make(map[string]*Observer),
-		obsLock: sync.Mutex{},
+		// auth:    auth,
+		// ps:      ps,
+		log: log,
+		// obs:     make(map[string]*Observer),
+		// obsLock: sync.Mutex{},
 	}
 
-	go as.listenResponses(responses)
+	// go as.listenResponses(responses)
 	return as
 }
 
