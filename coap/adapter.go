@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/mainflux/mainflux"
-	"github.com/mainflux/mainflux/logger"
 	"github.com/mainflux/mainflux/pkg/messaging"
 )
 
@@ -46,30 +45,28 @@ var _ Service = (*adapterService)(nil)
 type adapterService struct {
 	auth    mainflux.ThingsServiceClient
 	ps      messaging.PubSub
-	log     logger.Logger
 	obs     map[string]*Observer
 	obsLock sync.Mutex
 }
 
 // New instantiates the CoAP adapter implementation.
-func New(log logger.Logger) Service {
+func New(auth mainflux.ThingsServiceClient, ps messaging.PubSub) Service {
 	as := &adapterService{
-		// auth:    auth,
-		// ps:      ps,
-		log: log,
-		// obs:     make(map[string]*Observer),
-		// obsLock: sync.Mutex{},
+		auth:    auth,
+		ps:      ps,
+		obs:     make(map[string]*Observer),
+		obsLock: sync.Mutex{},
 	}
 
 	// go as.listenResponses(responses)
 	return as
 }
 
-func (svc *adapterService) get(obsID string) (*Observer, bool) {
+func (svc *adapterService) get(id string) (*Observer, bool) {
 	svc.obsLock.Lock()
 	defer svc.obsLock.Unlock()
 
-	val, ok := svc.obs[obsID]
+	val, ok := svc.obs[id]
 	return val, ok
 }
 
@@ -85,26 +82,14 @@ func (svc *adapterService) put(obsID string, o *Observer) {
 	svc.obs[obsID] = o
 }
 
-func (svc *adapterService) remove(obsID string) {
+func (svc *adapterService) remove(id string) {
 	svc.obsLock.Lock()
 	defer svc.obsLock.Unlock()
 
-	val, ok := svc.obs[obsID]
+	val, ok := svc.obs[id]
 	if ok {
 		close(val.Cancel)
-		delete(svc.obs, obsID)
-	}
-}
-
-// ListenResponses method handles ACK messages received from client.
-func (svc *adapterService) listenResponses(responses <-chan string) {
-	for {
-		id := <-responses
-
-		val, ok := svc.get(id)
-		if ok {
-			val.StoreExpired(false)
-		}
+		delete(svc.obs, id)
 	}
 }
 
@@ -129,7 +114,7 @@ func (svc *adapterService) Subscribe(chanID, subtopic, obsID string, o *Observer
 	go func() {
 		<-o.Cancel
 		if err := svc.ps.Unsubscribe(subject); err != nil {
-			svc.log.Error(fmt.Sprintf("Failed to unsubscribe from %s.%s due to %s", chanID, subtopic, err))
+			// svc.log.Error(fmt.Sprintf("Failed to unsubscribe from %s.%s due to %s", chanID, subtopic, err))
 		}
 	}()
 
