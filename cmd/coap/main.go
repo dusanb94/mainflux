@@ -19,11 +19,9 @@ import (
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/coap"
 	"github.com/mainflux/mainflux/coap/api"
-	"github.com/mainflux/mainflux/pkg/messaging/nats"
 	gocoap "github.com/plgd-dev/go-coap/v2"
 
 	logger "github.com/mainflux/mainflux/logger"
-	thingsapi "github.com/mainflux/mainflux/things/api/auth/grpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 
@@ -77,19 +75,19 @@ func main() {
 	conn := connectToThings(cfg, logger)
 	defer conn.Close()
 
-	thingsTracer, thingsCloser := initJaeger("things", cfg.jaegerURL, logger)
-	defer thingsCloser.Close()
+	// thingsTracer, thingsCloser := initJaeger("things", cfg.jaegerURL, logger)
+	// defer thingsCloser.Close()
 
-	tc := thingsapi.NewClient(conn, thingsTracer, cfg.thingsAuthTimeout)
+	// tc := thingsapi.NewClient(conn, thingsTracer, cfg.thingsAuthTimeout)
 
-	pubSub, err := nats.NewPubSub(cfg.natsURL, "", logger)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to connect to NATS: %s", err))
-		os.Exit(1)
-	}
-	defer pubSub.Close()
+	// pubSub, err := nats.NewPubSub(cfg.natsURL, "", logger)
+	// if err != nil {
+	// 	logger.Error(fmt.Sprintf("Failed to connect to NATS: %s", err))
+	// 	os.Exit(1)
+	// }
+	// defer pubSub.Close()
 
-	svc := coap.New(tc, pubSub)
+	svc := coap.New(nil, nil)
 
 	svc = api.LoggingMiddleware(svc, logger)
 
@@ -214,7 +212,7 @@ func startHTTPServer(port string, logger logger.Logger, errs chan error) {
 func startCOAPServer(cfg config, svc coap.Service, auth mainflux.ThingsServiceClient, l logger.Logger, errs chan error) {
 	p := fmt.Sprintf(":%s", cfg.port)
 	l.Info(fmt.Sprintf("CoAP adapter service started, exposed port %s", cfg.port))
-	r := api.MakeCoAPHandler(svc)
+	r := api.MakeCoAPHandler(svc, l)
 	// errs <- gocoap.ListenAndServe("udp", p, api.MakeCOAPHandler(svc, auth, l, respChan, cfg.pingPeriod))
 	errs <- gocoap.ListenAndServe("udp", p, r)
 }

@@ -43,13 +43,9 @@ func (lm *loggingMiddleware) Publish(msg messaging.Message) (err error) {
 	return lm.svc.Publish(msg)
 }
 
-func (lm *loggingMiddleware) Subscribe(chanID, subtopic, obsID string, o *coap.Observer) (err error) {
+func (lm *loggingMiddleware) Subscribe(endpoint string, o coap.Observer) (err error) {
 	defer func(begin time.Time) {
-		destChannel := chanID
-		if subtopic != "" {
-			destChannel = fmt.Sprintf("%s.%s", destChannel, subtopic)
-		}
-		message := fmt.Sprintf("Method subscribe to channel %s for client %s took %s to complete", destChannel, obsID, time.Since(begin))
+		message := fmt.Sprintf("Method subscribe to endpoint %s for client %s took %s to complete", endpoint, o.Token(), time.Since(begin))
 		if err != nil {
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return
@@ -57,14 +53,14 @@ func (lm *loggingMiddleware) Subscribe(chanID, subtopic, obsID string, o *coap.O
 		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
 	}(time.Now())
 
-	return lm.svc.Subscribe(chanID, subtopic, obsID, o)
+	return lm.svc.Subscribe(endpoint, o)
 }
 
-func (lm *loggingMiddleware) Unsubscribe(obsID string) {
+func (lm *loggingMiddleware) Unsubscribe(endpoint, token string) {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method unsubscribe for the client %s took %s to complete without errors.", obsID, time.Since(begin))
+		message := fmt.Sprintf("Method unsubscribe for the client %s from the resource %s took %s to complete without errors.", token, endpoint, time.Since(begin))
 		lm.logger.Info(fmt.Sprintf(message))
 	}(time.Now())
 
-	lm.svc.Unsubscribe(obsID)
+	lm.svc.Unsubscribe(endpoint, token)
 }

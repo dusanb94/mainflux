@@ -5,16 +5,17 @@ package api
 
 import (
 	"bytes"
-	"log"
+	"fmt"
 	"net/http"
 
 	"github.com/go-zoo/bone"
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/coap"
+	log "github.com/mainflux/mainflux/logger"
+	"github.com/mainflux/mainflux/pkg/messaging"
 	"github.com/plgd-dev/go-coap/v2/message"
 	"github.com/plgd-dev/go-coap/v2/message/codes"
 	"github.com/plgd-dev/go-coap/v2/mux"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -32,11 +33,12 @@ const (
 // 	channelRegExp        = regexp.MustCompile(`^/?channels/([\w\-]+)/messages(/[^?]*)?(\?.*)?$`)
 // )
 
-// var (
-// 	auth       mainflux.ThingsServiceClient
-// 	logger     log.Logger
+var (
+	// 	auth       mainflux.ThingsServiceClient
+	logger log.Logger
+
 // 	pingPeriod time.Duration
-// )
+)
 
 //MakeHTTPHandler creates handler for version endpoint.
 func MakeHTTPHandler() http.Handler {
@@ -48,7 +50,8 @@ func MakeHTTPHandler() http.Handler {
 }
 
 // MakeCoAPHandler creates handler for CoAP messages.
-func MakeCoAPHandler(svc coap.Service) *mux.Router {
+func MakeCoAPHandler(svc coap.Service, l log.Logger) *mux.Router {
+	logger = l
 	r := mux.NewRouter()
 	r.Handle("/channels", mux.HandlerFunc(handler(svc)))
 
@@ -64,22 +67,26 @@ func handler(svc coap.Service) func(w mux.ResponseWriter, m *mux.Message) {
 			Options: make(message.Options, 0, 16),
 			Body:    bytes.NewReader([]byte("B hello world")),
 		}
-		optsBuf := make([]byte, 32)
-		opts, used, err := customResp.Options.SetContentFormat(optsBuf, message.TextPlain)
-		if err == message.ErrTooSmall {
-			optsBuf = append(optsBuf, make([]byte, used)...)
-			opts, used, err = customResp.Options.SetContentFormat(optsBuf, message.TextPlain)
+		switch m.Code {
+		case codes.GET:
+			obs, err := m.Options.Observe()
+			if err != nil {
+				logger.Warn(fmt.Sprintf("Error reading observe option"))
+			}
+			endpoint, _ := m.Options.Path()
+			if obs == 0 {
+				o := coap.NewObserver(w.Client(), m.Token)
+				fmt.Println("subscribed")
+				svc.Subscribe(endpoint, o)
+				return
+			}
+			svc.Unsubscribe(endpoint, m.Token.String())
+		case codes.POST:
+			svc.Publish(messaging.Message{Payload: []byte("")})
 		}
-		if err != nil {
-			log.Printf("cannot set options to response: %v", err)
-			return
-		}
-		optsBuf = optsBuf[:used]
-		customResp.Options = opts
 
-		err = w.Client().WriteMessage(&customResp)
-		if err != nil {
-			log.Printf("cannot set response: %v", err)
+		if err := w.Client().WriteMessage(&customResp); err != nil {
+			logger.Warn(fmt.Sprintf("Can't set response: %v", err))
 		}
 	}
 }

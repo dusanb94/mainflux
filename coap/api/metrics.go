@@ -39,20 +39,20 @@ func (mm *metricsMiddleware) Publish(msg messaging.Message) error {
 	return mm.svc.Publish(msg)
 }
 
-func (mm *metricsMiddleware) Subscribe(chanID, subtopic, clientID string, o *coap.Observer) error {
+func (mm *metricsMiddleware) Subscribe(endpoint string, o coap.Observer) error {
 	defer func(begin time.Time) {
 		mm.counter.With("method", "subscribe").Add(1)
 		mm.latency.With("method", "subscribe").Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	return mm.svc.Subscribe(chanID, subtopic, clientID, o)
+	return mm.svc.Subscribe(endpoint, o)
 }
 
-func (mm *metricsMiddleware) Unsubscribe(clientID string) {
+func (mm *metricsMiddleware) Unsubscribe(endpoint, token string) {
 	defer func(begin time.Time) {
 		mm.counter.With("method", "unsubscribe").Add(1)
 		mm.latency.With("method", "unsubscribe").Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	mm.svc.Unsubscribe(clientID)
+	mm.svc.Unsubscribe(endpoint, token)
 }
