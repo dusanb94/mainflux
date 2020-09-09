@@ -74,17 +74,14 @@ func (o *observer) Handle(msg messaging.Message) error {
 		Code:    codes.Content,
 		Token:   o.token,
 		Context: o.client.Context(),
-		Body:    bytes.NewReader([]byte(fmt.Sprintf("Been running for %v", "sas"))),
+		// Body:    bytes.NewReader(msg.Payload),
+		Body: bytes.NewReader([]byte(fmt.Sprintf("Been running for %v", "sas"))),
 	}
 	var opts message.Options
 	var buf []byte
-	opts, n, err := opts.SetContentFormat(buf, message.TextPlain)
-	if err == message.ErrTooSmall {
-		buf = append(buf, make([]byte, n)...)
-		opts, n, err = opts.SetContentFormat(buf, message.TextPlain)
-	}
+	opts, _, err := opts.SetContentFormat(buf, message.TextPlain)
 	if err != nil {
-		return fmt.Errorf("cannot set content format to response: %w", err)
+		return err
 	}
 	// if obs >= 0 {
 	// opts, n, err = opts.SetObserve(buf, uint32(1))

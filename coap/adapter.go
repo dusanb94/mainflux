@@ -27,17 +27,17 @@ const (
 	MaxRetransmit = 4
 )
 
-// Service specifies coap service API.
+// Service specifies CoAP service API.
 type Service interface {
 	// Publish Messssage
-	Publish(msg messaging.Message) error
+	Publish(key string, msg messaging.Message) error
 
 	// Subscribes to channel with specified id, subtopic and adds subscription to
 	// service map of subscriptions under given ID.
-	Subscribe(endpoint string, o Observer) error
+	Subscribe(key, endpoint string, o Observer) error
 
 	// Unsubscribe method is used to stop observing resource.
-	Unsubscribe(endpoint, token string)
+	Unsubscribe(key, endpoint, token string)
 }
 
 var _ Service = (*adapterService)(nil)
@@ -62,7 +62,7 @@ func New(auth mainflux.ThingsServiceClient, ps messaging.PubSub) Service {
 	return as
 }
 
-func (svc *adapterService) Publish(msg messaging.Message) error {
+func (svc *adapterService) Publish(key string, msg messaging.Message) error {
 	endpoint := fmt.Sprintf("%s.%s", msg.Channel, msg.Subtopic)
 
 	for _, o := range svc.observers[endpoint] {
@@ -71,7 +71,7 @@ func (svc *adapterService) Publish(msg messaging.Message) error {
 	return svc.ps.Publish(msg.Channel, msg)
 }
 
-func (svc *adapterService) Subscribe(endpoint string, o Observer) error {
+func (svc *adapterService) Subscribe(key, endpoint string, o Observer) error {
 	// subject := chanID
 	// if subtopic != "" {
 	// 	subject = fmt.Sprintf("%s.%s", chanID, subtopic)
@@ -101,7 +101,7 @@ func (svc *adapterService) Subscribe(endpoint string, o Observer) error {
 	return nil
 }
 
-func (svc *adapterService) Unsubscribe(endpoint, token string) {
+func (svc *adapterService) Unsubscribe(key, endpoint, token string) {
 	svc.remove(endpoint, token)
 }
 
