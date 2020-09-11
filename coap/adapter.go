@@ -74,11 +74,6 @@ func New(auth mainflux.ThingsServiceClient, ps messaging.PubSub) Service {
 
 func (svc *adapterService) Publish(key string, msg messaging.Message) error {
 	endpoint := fmt.Sprintf("%s.%s", msg.Channel, msg.Subtopic)
-	fmt.Println(len(svc.observers))
-
-	for k := range svc.observers {
-		fmt.Println(k)
-	}
 	svc.obsLock.RLock()
 	for _, o := range svc.observers[endpoint] {
 		fmt.Println("publishing")
@@ -122,10 +117,10 @@ func (svc *adapterService) Subscribe(key, endpoint string, o Observer) error {
 	// Put method removes Observer if already exists.
 	go func() {
 		<-o.Done()
-		fmt.Println("finished", endpoint, o.Token())
+		// fmt.Println("finished", endpoint, o.Token())
 		svc.remove(endpoint, o.Token())
 	}()
-	fmt.Println("EP:", endpoint, o.Token())
+	// fmt.Println("EP:", endpoint, o.Token())
 	return svc.put(endpoint, o.Token(), o)
 }
 

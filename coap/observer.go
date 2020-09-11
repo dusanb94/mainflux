@@ -5,7 +5,6 @@ package coap
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/mainflux/mainflux/pkg/messaging"
 	"github.com/plgd-dev/go-coap/v2/message"
@@ -96,8 +95,7 @@ func (o *observer) Handle(msg messaging.Message) error {
 		Code:    codes.Content,
 		Token:   o.token,
 		Context: o.client.Context(),
-		// Body:    bytes.NewReader(msg.Payload),
-		Body: bytes.NewReader([]byte(fmt.Sprintf("Been running for %v", "sas"))),
+		Body:    bytes.NewReader(msg.Payload),
 	}
 	var opts message.Options
 	var buf []byte

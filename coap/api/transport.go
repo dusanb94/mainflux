@@ -6,6 +6,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -69,19 +70,12 @@ func handler(svc coap.Service) func(w mux.ResponseWriter, m *mux.Message) {
 			logger.Warn(fmt.Sprintf("Error parsing path: %s", err))
 			return
 		}
-		if m.Body != nil {
-			if _, err := m.Body.Read(msg.Payload); err != nil {
-				return // same heres
-			}
-		}
 		key, err := parseKey(m)
 		if err != nil {
 			logger.Warn(fmt.Sprintf("Error parsing auth: %s", err))
 			return
 		}
-		fmt.Println(m.Options.GetString(message.URIQuery))
 		endpoint := fmt.Sprintf("%s.%s", msg.Channel, msg.Subtopic)
-		fmt.Println("ENDPOINT:", endpoint)
 
 		customResp := message.Message{
 			Code:    codes.Content,
@@ -115,37 +109,30 @@ func handler(svc coap.Service) func(w mux.ResponseWriter, m *mux.Message) {
 func decodeMessage(msg *mux.Message) (messaging.Message, error) {
 	path, err := msg.Options.Path()
 	if err != nil {
-		// logger.Warn(fmt.Sprintf("Error parsing path: %s", err))
 		return messaging.Message{}, err
 	}
 	ret := messaging.Message{
 		Protocol: protocol,
 		Channel:  parseID(path),
 		Subtopic: parseSubtopic(path),
-		// Payload:  msg.Body.Read(),
-		Payload: []byte{},
-		Created: time.Now().UnixNano(),
+		Payload:  []byte{},
+		Created:  time.Now().UnixNano(),
+	}
+
+	if msg.Body != nil {
+		var err error
+		var n int
+		buff := make([]byte, 4096)
+		for err != io.EOF {
+			n, err = msg.Body.Read(buff)
+			if err != nil && err != io.EOF {
+				return ret, err
+			}
+			ret.Payload = append(ret.Payload, buff[:n]...)
+		}
 	}
 	return ret, nil
 }
-
-// func getPath(opts message.Options) string {
-// 	path, err := opts.Path()
-// 	if err != nil {
-// 		fmt.Printf("cannot get path: %v", err)
-// 		return ""
-// 	}
-// 	return path
-// }
-
-// func parsePath(opts message.Options) (string, error) {
-// 	path, err := opts.Path()
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	return path, nil
-// }
 
 func parseID(path string) string {
 	vars := strings.Split(path, "/")
