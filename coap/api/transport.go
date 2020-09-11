@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-zoo/bone"
 	"github.com/mainflux/mainflux"
@@ -61,22 +62,26 @@ func handler(svc coap.Service) func(w mux.ResponseWriter, m *mux.Message) {
 	return func(w mux.ResponseWriter, m *mux.Message) {
 		if m.Options == nil {
 			logger.Warn("Nil options")
-			return
+			return // Handle not return! defer sendresp?
 		}
-		path, err := m.Options.Path()
+		msg, err := decodeMessage(m)
 		if err != nil {
 			logger.Warn(fmt.Sprintf("Error parsing path: %s", err))
 			return
 		}
-		chanID := parseID(path)
+		if m.Body != nil {
+			if _, err := m.Body.Read(msg.Payload); err != nil {
+				return // same heres
+			}
+		}
 		key, err := parseKey(m)
 		if err != nil {
 			logger.Warn(fmt.Sprintf("Error parsing auth: %s", err))
 			return
 		}
-		// subtopic := parseSubtopic(path)
-		fmt.Println(chanID)
 		fmt.Println(m.Options.GetString(message.URIQuery))
+		endpoint := fmt.Sprintf("%s.%s", msg.Channel, msg.Subtopic)
+		fmt.Println("ENDPOINT:", endpoint)
 
 		customResp := message.Message{
 			Code:    codes.Content,
@@ -93,18 +98,35 @@ func handler(svc coap.Service) func(w mux.ResponseWriter, m *mux.Message) {
 			}
 			if obs == 0 {
 				o := coap.NewObserver(w.Client(), m.Token)
-				svc.Subscribe(key, chanID, o)
+				svc.Subscribe(key, endpoint, o)
 				break
 			}
-			svc.Unsubscribe(key, chanID, m.Token.String())
+			svc.Unsubscribe(key, endpoint, m.Token.String())
 		case codes.POST:
-			svc.Publish(key, messaging.Message{Payload: []byte("")})
+			svc.Publish(key, msg)
 		}
 
 		if err := w.Client().WriteMessage(&customResp); err != nil {
 			logger.Warn(fmt.Sprintf("Can't set response: %v", err))
 		}
 	}
+}
+
+func decodeMessage(msg *mux.Message) (messaging.Message, error) {
+	path, err := msg.Options.Path()
+	if err != nil {
+		// logger.Warn(fmt.Sprintf("Error parsing path: %s", err))
+		return messaging.Message{}, err
+	}
+	ret := messaging.Message{
+		Protocol: protocol,
+		Channel:  parseID(path),
+		Subtopic: parseSubtopic(path),
+		// Payload:  msg.Body.Read(),
+		Payload: []byte{},
+		Created: time.Now().UnixNano(),
+	}
+	return ret, nil
 }
 
 // func getPath(opts message.Options) string {
@@ -152,7 +174,7 @@ func parseSubtopic(path string) string {
 			pos++
 		}
 		if pos == 3 {
-			return path[i:]
+			return strings.ReplaceAll(path[i+1:], "/", ".")
 		}
 	}
 	return ""

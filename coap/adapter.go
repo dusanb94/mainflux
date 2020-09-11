@@ -47,7 +47,7 @@ type adapterService struct {
 	auth      mainflux.ThingsServiceClient
 	ps        messaging.PubSub
 	observers map[string]observers
-	obsLock   sync.Mutex
+	obsLock   sync.RWMutex
 }
 
 // New instantiates the CoAP adapter implementation.
@@ -56,19 +56,37 @@ func New(auth mainflux.ThingsServiceClient, ps messaging.PubSub) Service {
 		// auth:      auth,
 		// ps:        ps,
 		observers: make(map[string]observers),
-		obsLock:   sync.Mutex{},
+		obsLock:   sync.RWMutex{},
 	}
+
+	go func() {
+		for {
+			time.Sleep(time.Second * 10)
+			fmt.Println("testing size... ")
+			as.obsLock.RLock()
+			fmt.Println(as.observers)
+			as.obsLock.RUnlock()
+		}
+	}()
 
 	return as
 }
 
 func (svc *adapterService) Publish(key string, msg messaging.Message) error {
 	endpoint := fmt.Sprintf("%s.%s", msg.Channel, msg.Subtopic)
+	fmt.Println(len(svc.observers))
 
+	for k := range svc.observers {
+		fmt.Println(k)
+	}
+	svc.obsLock.RLock()
 	for _, o := range svc.observers[endpoint] {
+		fmt.Println("publishing")
 		o.Handle(msg)
 	}
-	return svc.ps.Publish(msg.Channel, msg)
+	svc.obsLock.RUnlock()
+	return nil
+	// return svc.ps.Publish(msg.Channel, msg)
 }
 
 func (svc *adapterService) Subscribe(key, endpoint string, o Observer) error {
@@ -78,12 +96,17 @@ func (svc *adapterService) Subscribe(key, endpoint string, o Observer) error {
 	// }
 
 	// err := svc.ps.Subscribe(subject, func(msg messaging.Message) error {
-	go func() {
-		for {
-			fmt.Println("Handle", o.Handle(messaging.Message{}))
-			time.Sleep(time.Second * 10)
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		err := o.Handle(messaging.Message{})
+	// 		fmt.Println(err, reflect.TypeOf(err))
+	// 		if err == context.Canceled {
+	// 			fmt.Println("AAAA")
+	// 			return
+	// 		}
+	// 		time.Sleep(time.Second * 100)
+	// 	}
+	// }()
 	// })
 	// if err != nil {
 	// 	return err
@@ -97,8 +120,13 @@ func (svc *adapterService) Subscribe(key, endpoint string, o Observer) error {
 	// }()
 
 	// Put method removes Observer if already exists.
-	svc.put(endpoint, o.Token(), o)
-	return nil
+	go func() {
+		<-o.Done()
+		fmt.Println("finished", endpoint, o.Token())
+		svc.remove(endpoint, o.Token())
+	}()
+	fmt.Println("EP:", endpoint, o.Token())
+	return svc.put(endpoint, o.Token(), o)
 }
 
 func (svc *adapterService) Unsubscribe(key, endpoint, token string) {
@@ -106,8 +134,8 @@ func (svc *adapterService) Unsubscribe(key, endpoint, token string) {
 }
 
 func (svc *adapterService) get(topic, token string) (Observer, bool) {
-	svc.obsLock.Lock()
-	defer svc.obsLock.Unlock()
+	svc.obsLock.RLock()
+	defer svc.obsLock.RUnlock()
 
 	obs, ok := svc.observers[topic]
 	if !ok {
@@ -117,29 +145,32 @@ func (svc *adapterService) get(topic, token string) (Observer, bool) {
 	return o, ok
 }
 
-func (svc *adapterService) put(endpoint, token string, o Observer) {
+func (svc *adapterService) put(endpoint, token string, o Observer) error {
 	svc.obsLock.Lock()
 	defer svc.obsLock.Unlock()
 
 	obs, ok := svc.observers[endpoint]
+	// If there are no observers, create map and assign it to the endpoint.
 	if !ok {
 		obs = observers{token: o}
-		svc.observers[token] = obs
-		return
+		svc.observers[endpoint] = obs
+		return nil
 	}
+	// If observer exists, cancel it and replace.
 	if current, ok := obs[token]; ok {
 		if err := current.Cancel(); err != nil {
-			return
+			return err
 		}
 	}
 	obs[token] = o
+	return nil
 }
 
-func (svc *adapterService) remove(topic, token string) {
+func (svc *adapterService) remove(endpoint, token string) {
 	svc.obsLock.Lock()
 	defer svc.obsLock.Unlock()
 
-	obs, ok := svc.observers[topic]
+	obs, ok := svc.observers[endpoint]
 	if !ok {
 		return
 	}
@@ -149,4 +180,8 @@ func (svc *adapterService) remove(topic, token string) {
 		}
 	}
 	delete(obs, token)
+	// If there are no observers left for the endpint, remove the map.
+	if len(obs) == 0 {
+		delete(svc.observers, endpoint)
+	}
 }

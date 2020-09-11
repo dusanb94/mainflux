@@ -17,8 +17,9 @@ import (
 type Observer interface {
 	Handle(m messaging.Message) error
 	Cancel() error
+	Done() <-chan struct{}
 	Token() string
-	// Message() chan<- messaging.Message
+	Message() chan<- messaging.Message
 }
 
 type observers map[string]Observer
@@ -55,9 +56,26 @@ type observer struct {
 
 // NewObserver instantiates a new Observer.
 func NewObserver(client mux.Client, token message.Token) Observer {
+	// go func() {
+	// 	<-client.Context().Done()
+	// 	fmt.Println("DONEE")
+	// }()
 	return &observer{
 		client: client,
 		token:  token,
+	}
+}
+
+func (o *observer) Done() <-chan struct{} {
+	return o.client.Context().Done()
+}
+
+func (o *observer) Do() {
+	select {
+	case <-o.client.Context().Done():
+		o.client.Close()
+	case msg := <-o.messages:
+		o.Handle(msg)
 	}
 }
 
@@ -67,6 +85,10 @@ func (o *observer) Cancel() error {
 
 func (o *observer) Token() string {
 	return o.token.String()
+}
+
+func (o *observer) Message() chan<- messaging.Message {
+	return o.messages
 }
 
 func (o *observer) Handle(msg messaging.Message) error {
