@@ -5,6 +5,7 @@ package coap
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/mainflux/mainflux/pkg/messaging"
 	"github.com/plgd-dev/go-coap/v2/message"
@@ -25,28 +26,6 @@ type observers map[string]Observer
 
 // Observer is used to handle CoAP subscription.
 type observer struct {
-	// Expired flag is used to mark that ticker sent a
-	// CON message, but response is not received yet.
-	// The flag changes its value once ACK message is
-	// received from the client. If Expired is true
-	// when ticker is triggered, Observer should be canceled
-	// and removed from the Service map.
-	// expired bool
-
-	// // Message ID for notification messages.
-	// msgID uint16
-
-	// expiredLock, msgIDLock sync.Mutex
-
-	// // Messages is used to receive messages from NATS.
-	// Messages chan messaging.Message
-
-	// // Cancel channel is used to cancel observing resource.
-	// // Cancel channel should not be used to send or receive any
-	// // data, it's purpose is to be closed once Observer canceled.
-	// Cancel chan bool
-
-	// Conn represents client connection.
 	client   mux.Client
 	token    message.Token
 	messages chan messaging.Message
@@ -55,10 +34,6 @@ type observer struct {
 
 // NewObserver instantiates a new Observer.
 func NewObserver(client mux.Client, token message.Token) Observer {
-	// go func() {
-	// 	<-client.Context().Done()
-	// 	fmt.Println("DONEE")
-	// }()
 	return &observer{
 		client: client,
 		token:  token,
@@ -98,21 +73,26 @@ func (o *observer) Handle(msg messaging.Message) error {
 		Body:    bytes.NewReader(msg.Payload),
 	}
 	var opts message.Options
-	var buf []byte
-	opts, _, err := opts.SetContentFormat(buf, message.TextPlain)
-	if err != nil {
-		return err
+	var buff []byte
+
+	opts, n, err := opts.SetContentFormat(buff, message.TextPlain)
+	if err == message.ErrTooSmall {
+		buff = append(buff, make([]byte, n)...)
+		opts, n, err = opts.SetContentFormat(buff, message.TextPlain)
 	}
-	// if obs >= 0 {
-	// opts, n, err = opts.SetObserve(buf, uint32(1))
+	if err != nil {
+		return fmt.Errorf("cannot set content format to response: %w", err)
+	}
+	// // if obs >= 0 {
+	// opts, n, err = opts.SetObserve(buff, uint32(ob))
 	// if err == message.ErrTooSmall {
-	// 	buf = append(buf, make([]byte, n)...)
-	// 	opts, n, err = opts.SetObserve(buf, uint32(1))
+	// 	buff = append(buff, make([]byte, n)...)
+	// 	opts, n, err = opts.SetObserve(buff, uint32(ob))
 	// }
 	// if err != nil {
 	// 	return fmt.Errorf("cannot set options to response: %w", err)
 	// }
-	// }
+	// // }
 	m.Options = opts
 	return o.client.WriteMessage(&m)
 }

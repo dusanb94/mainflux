@@ -6,8 +6,10 @@ package api
 import (
 	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -22,25 +24,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const (
-	protocol = "coap"
+const protocol = "coap"
 
-// 	senMLJSON gocoap.MediaType = 110
-// 	senMLCBOR gocoap.MediaType = 112
-)
+var channelPartRegExp = regexp.MustCompile(`^channels/([\w\-]+)/messages(/[^?]*)?(\?.*)?$`)
 
-// var (
-// 	errBadRequest        = errors.New("bad request")
-// 	errBadOption         = errors.New("bad option")
-// 	errMalformedSubtopic = errors.New("malformed subtopic")
-// 	channelRegExp        = regexp.MustCompile(`^/?channels/([\w\-]+)/messages(/[^?]*)?(\?.*)?$`)
-// )
+var errMalformedSubtopic = errors.New("malformed subtopic")
 
 var (
-	// 	auth       mainflux.ThingsServiceClient
-	logger log.Logger
-
-// 	pingPeriod time.Duration
+	logger  log.Logger
+	service coap.Service
 )
 
 //MakeHTTPHandler creates handler for version endpoint.
@@ -55,54 +47,65 @@ func MakeHTTPHandler() http.Handler {
 // MakeCoAPHandler creates handler for CoAP messages.
 func MakeCoAPHandler(svc coap.Service, l log.Logger) mux.HandlerFunc {
 	logger = l
+	service = svc
 
-	return handler(svc)
+	return handler
 }
 
-func handler(svc coap.Service) func(w mux.ResponseWriter, m *mux.Message) {
-	return func(w mux.ResponseWriter, m *mux.Message) {
-		if m.Options == nil {
-			logger.Warn("Nil options")
-			return // Handle not return! defer sendresp?
-		}
-		msg, err := decodeMessage(m)
-		if err != nil {
-			logger.Warn(fmt.Sprintf("Error parsing path: %s", err))
-			return
-		}
-		key, err := parseKey(m)
-		if err != nil {
-			logger.Warn(fmt.Sprintf("Error parsing auth: %s", err))
-			return
-		}
+func sendResp(w mux.ResponseWriter, resp *message.Message) {
+	fmt.Println("sending message")
+	if err := w.Client().WriteMessage(resp); err != nil {
+		logger.Warn(fmt.Sprintf("Can't set response: %v", err))
+	}
+}
+
+func handler(w mux.ResponseWriter, m *mux.Message) {
+	resp := message.Message{
+		Code:    codes.Content,
+		Token:   m.Token,
+		Context: m.Context,
+		Options: make(message.Options, 0, 16),
+	}
+	defer sendResp(w, &resp)
+	if m.Options == nil {
+		logger.Warn("Nil options")
+		resp.Code = codes.BadOption
+		return
+	}
+	msg, err := decodeMessage(m)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("Error decoding message: %s", err))
+		resp.Code = codes.BadRequest
+		return
+	}
+	key, err := parseKey(m)
+	if err != nil {
+		logger.Warn(fmt.Sprintf("Error parsing auth: %s", err))
+		resp.Code = codes.Unauthorized
+		return
+	}
+
+	switch m.Code {
+	case codes.GET:
 		endpoint := fmt.Sprintf("%s.%s", msg.Channel, msg.Subtopic)
-
-		customResp := message.Message{
-			Code:    codes.Content,
-			Token:   m.Token,
-			Context: m.Context,
-			Options: make(message.Options, 0, 16),
+		obs, err := m.Options.Observe()
+		if err != nil {
+			resp.Code = codes.BadOption
+			logger.Warn(fmt.Sprintf("Error reading observe option: %s", err))
+			return
 		}
-		switch m.Code {
-		case codes.GET:
-			obs, err := m.Options.Observe()
-			if err != nil {
-				logger.Warn(fmt.Sprintf("Error reading observe option: %s", err))
-				break
+		if obs == 0 {
+			o := coap.NewObserver(w.Client(), m.Token)
+			if err := service.Subscribe(key, endpoint, o); err != nil {
 			}
-			if obs == 0 {
-				o := coap.NewObserver(w.Client(), m.Token)
-				svc.Subscribe(key, endpoint, o)
-				break
-			}
-			svc.Unsubscribe(key, endpoint, m.Token.String())
-		case codes.POST:
-			svc.Publish(key, msg)
+			return
 		}
-
-		if err := w.Client().WriteMessage(&customResp); err != nil {
-			logger.Warn(fmt.Sprintf("Can't set response: %v", err))
+		service.Unsubscribe(key, endpoint, m.Token.String())
+	case codes.POST:
+		if err := service.Publish(key, msg); err != nil {
 		}
+	default:
+		resp.Code = codes.NotFound
 	}
 }
 
@@ -111,25 +114,29 @@ func decodeMessage(msg *mux.Message) (messaging.Message, error) {
 	if err != nil {
 		return messaging.Message{}, err
 	}
+	channelParts := channelPartRegExp.FindStringSubmatch(path)
+	if len(channelParts) < 2 {
+		return messaging.Message{}, errMalformedSubtopic
+	}
+
+	st, err := parseSubtopic(path)
+	if err != nil {
+		return messaging.Message{}, err
+	}
 	ret := messaging.Message{
 		Protocol: protocol,
 		Channel:  parseID(path),
-		Subtopic: parseSubtopic(path),
+		Subtopic: st,
 		Payload:  []byte{},
 		Created:  time.Now().UnixNano(),
 	}
 
 	if msg.Body != nil {
-		var err error
-		var n int
-		buff := make([]byte, 4096)
-		for err != io.EOF {
-			n, err = msg.Body.Read(buff)
-			if err != nil && err != io.EOF {
-				return ret, err
-			}
-			ret.Payload = append(ret.Payload, buff[:n]...)
+		buff, err := ioutil.ReadAll(msg.Body)
+		if err != nil {
+			return ret, err
 		}
+		ret.Payload = buff
 	}
 	return ret, nil
 }
@@ -154,15 +161,31 @@ func parseKey(msg *mux.Message) (string, error) {
 	return vars[1], nil
 }
 
-func parseSubtopic(path string) string {
-	pos := 0
-	for i, c := range path {
-		if c == '/' {
-			pos++
-		}
-		if pos == 3 {
-			return strings.ReplaceAll(path[i+1:], "/", ".")
-		}
+func parseSubtopic(subtopic string) (string, error) {
+	if subtopic == "" {
+		return subtopic, nil
 	}
-	return ""
+
+	subtopic, err := url.QueryUnescape(subtopic)
+	if err != nil {
+		return "", errMalformedSubtopic
+	}
+	subtopic = strings.ReplaceAll(subtopic, "/", ".")
+
+	elems := strings.Split(subtopic, ".")
+	filteredElems := []string{}
+	for _, elem := range elems {
+		if elem == "" {
+			continue
+		}
+
+		if len(elem) > 1 && (strings.Contains(elem, "*") || strings.Contains(elem, ">")) {
+			return "", errMalformedSubtopic
+		}
+
+		filteredElems = append(filteredElems, elem)
+	}
+
+	subtopic = strings.Join(filteredElems, ".")
+	return subtopic, nil
 }

@@ -59,15 +59,16 @@ func New(auth mainflux.ThingsServiceClient, ps messaging.PubSub) Service {
 		obsLock:   sync.RWMutex{},
 	}
 
-	go func() {
-		for {
-			time.Sleep(time.Second * 10)
-			fmt.Println("testing size... ")
-			as.obsLock.RLock()
-			fmt.Println(as.observers)
-			as.obsLock.RUnlock()
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		time.Sleep(time.Second * 5)
+	// 		fmt.Println("testing size... ")
+	// 		as.obsLock.RLock()
+	// 		fmt.Println(as.observers)
+	// 		fmt.Println("Number of goroutines", runtime.NumGoroutine())
+	// 		as.obsLock.RUnlock()
+	// 	}
+	// }()
 
 	return as
 }
@@ -76,7 +77,6 @@ func (svc *adapterService) Publish(key string, msg messaging.Message) error {
 	endpoint := fmt.Sprintf("%s.%s", msg.Channel, msg.Subtopic)
 	svc.obsLock.RLock()
 	for _, o := range svc.observers[endpoint] {
-		fmt.Println("publishing")
 		o.Handle(msg)
 	}
 	svc.obsLock.RUnlock()
@@ -93,13 +93,15 @@ func (svc *adapterService) Subscribe(key, endpoint string, o Observer) error {
 	// err := svc.ps.Subscribe(subject, func(msg messaging.Message) error {
 	// go func() {
 	// 	for {
-	// 		err := o.Handle(messaging.Message{})
-	// 		fmt.Println(err, reflect.TypeOf(err))
-	// 		if err == context.Canceled {
-	// 			fmt.Println("AAAA")
-	// 			return
+	// 		for _, o := range svc.observers[endpoint] {
+	// 			err := o.Handle(messaging.Message{Payload: []byte("ddbdbdb")})
+	// 			fmt.Println(err, reflect.TypeOf(err))
+	// 			if err == context.Canceled {
+	// 				fmt.Println("AAAA")
+	// 				return
+	// 			}
+	// 			time.Sleep(time.Second * 5)
 	// 		}
-	// 		time.Sleep(time.Second * 100)
 	// 	}
 	// }()
 	// })
@@ -117,10 +119,9 @@ func (svc *adapterService) Subscribe(key, endpoint string, o Observer) error {
 	// Put method removes Observer if already exists.
 	go func() {
 		<-o.Done()
-		// fmt.Println("finished", endpoint, o.Token())
+		fmt.Println("finished", endpoint, o.Token())
 		svc.remove(endpoint, o.Token())
 	}()
-	// fmt.Println("EP:", endpoint, o.Token())
 	return svc.put(endpoint, o.Token(), o)
 }
 
