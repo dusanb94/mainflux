@@ -7,37 +7,33 @@
 package coap
 
 import (
+	"context"
 	"fmt"
 	"sync"
-	"time"
+
+	"github.com/mainflux/mainflux/pkg/errors"
 
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/pkg/messaging"
 )
 
-const (
-	chanID    = "id"
-	keyHeader = "key"
-
-	// AckRandomFactor is default ACK coefficient.
-	AckRandomFactor = 1.5
-	// AckTimeout is the amount of time to wait for a response.
-	AckTimeout = 2000 * time.Millisecond
-	// MaxRetransmit is the maximum number of times a message will be retransmitted.
-	MaxRetransmit = 4
+// Exported errors
+var (
+	ErrUnauthorized = errors.New("unauthorized access")
+	ErrUnsubscribe  = errors.New("unable to unsubscribe")
 )
 
 // Service specifies CoAP service API.
 type Service interface {
 	// Publish Messssage
-	Publish(key string, msg messaging.Message) error
+	Publish(ctx context.Context, key string, msg messaging.Message) error
 
 	// Subscribes to channel with specified id, subtopic and adds subscription to
 	// service map of subscriptions under given ID.
-	Subscribe(key, endpoint string, o Observer) error
+	Subscribe(ctx context.Context, key, chanID, subtopic string, o Observer) error
 
 	// Unsubscribe method is used to stop observing resource.
-	Unsubscribe(key, endpoint, token string)
+	Unsubscribe(ctx context.Context, key, chanID, subptopic, token string) error
 }
 
 var _ Service = (*adapterService)(nil)
@@ -53,7 +49,7 @@ type adapterService struct {
 // New instantiates the CoAP adapter implementation.
 func New(auth mainflux.ThingsServiceClient, ps messaging.PubSub) Service {
 	as := &adapterService{
-		// auth:      auth,
+		auth: auth,
 		// ps:        ps,
 		observers: make(map[string]observers),
 		obsLock:   sync.RWMutex{},
@@ -73,7 +69,17 @@ func New(auth mainflux.ThingsServiceClient, ps messaging.PubSub) Service {
 	return as
 }
 
-func (svc *adapterService) Publish(key string, msg messaging.Message) error {
+func (svc *adapterService) Publish(ctx context.Context, key string, msg messaging.Message) error {
+	ar := &mainflux.AccessByKeyReq{
+		Token:  key,
+		ChanID: msg.Channel,
+	}
+	thid, err := svc.auth.CanAccessByKey(ctx, ar)
+	if err != nil {
+		return err
+	}
+	msg.Publisher = thid.GetValue()
+
 	endpoint := fmt.Sprintf("%s.%s", msg.Channel, msg.Subtopic)
 	svc.obsLock.RLock()
 	for _, o := range svc.observers[endpoint] {
@@ -84,39 +90,17 @@ func (svc *adapterService) Publish(key string, msg messaging.Message) error {
 	// return svc.ps.Publish(msg.Channel, msg)
 }
 
-func (svc *adapterService) Subscribe(key, endpoint string, o Observer) error {
-	// subject := chanID
-	// if subtopic != "" {
-	// 	subject = fmt.Sprintf("%s.%s", chanID, subtopic)
-	// }
+func (svc *adapterService) Subscribe(ctx context.Context, key, chanID, subtopic string, o Observer) error {
+	ar := &mainflux.AccessByKeyReq{
+		Token:  key,
+		ChanID: chanID,
+	}
+	_, err := svc.auth.CanAccessByKey(ctx, ar)
+	if err != nil {
+		return errors.Wrap(ErrUnauthorized, err)
+	}
+	endpoint := fmt.Sprintf("%s.%s", chanID, subtopic)
 
-	// err := svc.ps.Subscribe(subject, func(msg messaging.Message) error {
-	// go func() {
-	// 	for {
-	// 		for _, o := range svc.observers[endpoint] {
-	// 			err := o.Handle(messaging.Message{Payload: []byte("ddbdbdb")})
-	// 			fmt.Println(err, reflect.TypeOf(err))
-	// 			if err == context.Canceled {
-	// 				fmt.Println("AAAA")
-	// 				return
-	// 			}
-	// 			time.Sleep(time.Second * 5)
-	// 		}
-	// 	}
-	// }()
-	// })
-	// if err != nil {
-	// 	return err
-	// }
-
-	// go func() {
-	// 	<-o.Cancel
-	// 	if err := svc.ps.Unsubscribe(subject); err != nil {
-	// 		// svc.log.Error(fmt.Sprintf("Failed to unsubscribe from %s.%s due to %s", chanID, subtopic, err))
-	// 	}
-	// }()
-
-	// Put method removes Observer if already exists.
 	go func() {
 		<-o.Done()
 		fmt.Println("finished", endpoint, o.Token())
@@ -125,8 +109,18 @@ func (svc *adapterService) Subscribe(key, endpoint string, o Observer) error {
 	return svc.put(endpoint, o.Token(), o)
 }
 
-func (svc *adapterService) Unsubscribe(key, endpoint, token string) {
-	svc.remove(endpoint, token)
+func (svc *adapterService) Unsubscribe(ctx context.Context, key, chanID, subtopic, token string) error {
+	ar := &mainflux.AccessByKeyReq{
+		Token:  key,
+		ChanID: chanID,
+	}
+	_, err := svc.auth.CanAccessByKey(ctx, ar)
+	if err != nil {
+		return errors.Wrap(ErrUnauthorized, err)
+	}
+	endpoint := fmt.Sprintf("%s.%s", chanID, subtopic)
+
+	return svc.remove(endpoint, token)
 }
 
 func (svc *adapterService) get(topic, token string) (Observer, bool) {
@@ -152,27 +146,27 @@ func (svc *adapterService) put(endpoint, token string, o Observer) error {
 		svc.observers[endpoint] = obs
 		return nil
 	}
-	// If observer exists, cancel it and replace.
-	if current, ok := obs[token]; ok {
-		if err := current.Cancel(); err != nil {
-			return err
+	// If observer exists, cancel subscription and replace it.
+	if sub, ok := obs[token]; ok {
+		if err := sub.Cancel(); err != nil {
+			return errors.Wrap(ErrUnsubscribe, err)
 		}
 	}
 	obs[token] = o
 	return nil
 }
 
-func (svc *adapterService) remove(endpoint, token string) {
+func (svc *adapterService) remove(endpoint, token string) error {
 	svc.obsLock.Lock()
 	defer svc.obsLock.Unlock()
 
 	obs, ok := svc.observers[endpoint]
 	if !ok {
-		return
+		return nil
 	}
 	if current, ok := obs[token]; ok {
 		if err := current.Cancel(); err != nil {
-			return
+			return errors.Wrap(ErrUnsubscribe, err)
 		}
 	}
 	delete(obs, token)
@@ -180,4 +174,5 @@ func (svc *adapterService) remove(endpoint, token string) {
 	if len(obs) == 0 {
 		delete(svc.observers, endpoint)
 	}
+	return nil
 }

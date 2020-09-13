@@ -6,6 +6,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -26,7 +27,7 @@ func LoggingMiddleware(svc coap.Service, logger log.Logger) coap.Service {
 	return &loggingMiddleware{logger, svc}
 }
 
-func (lm *loggingMiddleware) Publish(key string, msg messaging.Message) (err error) {
+func (lm *loggingMiddleware) Publish(ctx context.Context, key string, msg messaging.Message) (err error) {
 	defer func(begin time.Time) {
 		destChannel := msg.Channel
 		if msg.Subtopic != "" {
@@ -40,12 +41,12 @@ func (lm *loggingMiddleware) Publish(key string, msg messaging.Message) (err err
 		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
 	}(time.Now())
 
-	return lm.svc.Publish(key, msg)
+	return lm.svc.Publish(ctx, key, msg)
 }
 
-func (lm *loggingMiddleware) Subscribe(key, endpoint string, o coap.Observer) (err error) {
+func (lm *loggingMiddleware) Subscribe(ctx context.Context, key, chanID, subtopic string, o coap.Observer) (err error) {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method subscribe to endpoint %s for client %s took %s to complete", endpoint, o.Token(), time.Since(begin))
+		message := fmt.Sprintf("Method subscribe to channel %s and subtopic %s for client %s took %s to complete", chanID, subtopic, o.Token(), time.Since(begin))
 		if err != nil {
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return
@@ -53,14 +54,14 @@ func (lm *loggingMiddleware) Subscribe(key, endpoint string, o coap.Observer) (e
 		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
 	}(time.Now())
 
-	return lm.svc.Subscribe(key, endpoint, o)
+	return lm.svc.Subscribe(ctx, key, chanID, subtopic, o)
 }
 
-func (lm *loggingMiddleware) Unsubscribe(key, endpoint, token string) {
+func (lm *loggingMiddleware) Unsubscribe(ctx context.Context, key, chanID, subtopic, token string) error {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method unsubscribe for the client %s from the resource %s took %s to complete without errors.", token, endpoint, time.Since(begin))
+		message := fmt.Sprintf("Method unsubscribe for the client %s from the channel %s and subtopic %s took %s to complete without errors.", token, chanID, subtopic, time.Since(begin))
 		lm.logger.Info(fmt.Sprintf(message))
 	}(time.Now())
 
-	lm.svc.Unsubscribe(key, endpoint, token)
+	return lm.svc.Unsubscribe(ctx, key, chanID, subtopic, token)
 }

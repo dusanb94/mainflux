@@ -6,6 +6,7 @@
 package api
 
 import (
+	"context"
 	"time"
 
 	"github.com/go-kit/kit/metrics"
@@ -30,29 +31,29 @@ func MetricsMiddleware(svc coap.Service, counter metrics.Counter, latency metric
 	}
 }
 
-func (mm *metricsMiddleware) Publish(key string, msg messaging.Message) error {
+func (mm *metricsMiddleware) Publish(ctx context.Context, key string, msg messaging.Message) error {
 	defer func(begin time.Time) {
 		mm.counter.With("method", "publish").Add(1)
 		mm.latency.With("method", "publish").Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	return mm.svc.Publish(key, msg)
+	return mm.svc.Publish(ctx, key, msg)
 }
 
-func (mm *metricsMiddleware) Subscribe(key, endpoint string, o coap.Observer) error {
+func (mm *metricsMiddleware) Subscribe(ctx context.Context, key, chanID, subtopic string, o coap.Observer) error {
 	defer func(begin time.Time) {
 		mm.counter.With("method", "subscribe").Add(1)
 		mm.latency.With("method", "subscribe").Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	return mm.svc.Subscribe(key, endpoint, o)
+	return mm.svc.Subscribe(ctx, key, chanID, subtopic, o)
 }
 
-func (mm *metricsMiddleware) Unsubscribe(key, endpoint, token string) {
+func (mm *metricsMiddleware) Unsubscribe(ctx context.Context, key, chanID, subtopic, token string) error {
 	defer func(begin time.Time) {
 		mm.counter.With("method", "unsubscribe").Add(1)
 		mm.latency.With("method", "unsubscribe").Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	mm.svc.Unsubscribe(key, endpoint, token)
+	return mm.svc.Unsubscribe(ctx, key, chanID, subtopic, token)
 }

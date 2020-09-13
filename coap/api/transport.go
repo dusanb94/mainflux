@@ -4,7 +4,7 @@
 package api
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/mainflux/mainflux/pkg/errors"
 
 	"github.com/go-zoo/bone"
 	"github.com/mainflux/mainflux"
@@ -53,9 +55,8 @@ func MakeCoAPHandler(svc coap.Service, l log.Logger) mux.HandlerFunc {
 }
 
 func sendResp(w mux.ResponseWriter, resp *message.Message) {
-	fmt.Println("sending message")
 	if err := w.Client().WriteMessage(resp); err != nil {
-		logger.Warn(fmt.Sprintf("Can't set response: %v", err))
+		logger.Warn(fmt.Sprintf("Can't set response: %s", err))
 	}
 }
 
@@ -87,7 +88,6 @@ func handler(w mux.ResponseWriter, m *mux.Message) {
 
 	switch m.Code {
 	case codes.GET:
-		endpoint := fmt.Sprintf("%s.%s", msg.Channel, msg.Subtopic)
 		obs, err := m.Options.Observe()
 		if err != nil {
 			resp.Code = codes.BadOption
@@ -96,13 +96,20 @@ func handler(w mux.ResponseWriter, m *mux.Message) {
 		}
 		if obs == 0 {
 			o := coap.NewObserver(w.Client(), m.Token)
-			if err := service.Subscribe(key, endpoint, o); err != nil {
+			if err := service.Subscribe(context.Background(), key, msg.Channel, msg.Subtopic, o); err != nil {
+				switch {
+				case errors.Contains(err, coap.ErrUnauthorized):
+					resp.Code = codes.Unauthorized
+					return
+				case errors.Contains(err, coap.ErrUnsubscribe):
+					resp.Code = codes.InternalServerError
+				}
 			}
 			return
 		}
-		service.Unsubscribe(key, endpoint, m.Token.String())
+		service.Unsubscribe(context.Background(), key, msg.Channel, msg.Subtopic, m.Token.String())
 	case codes.POST:
-		if err := service.Publish(key, msg); err != nil {
+		if err := service.Publish(context.Background(), key, msg); err != nil {
 		}
 	default:
 		resp.Code = codes.NotFound
@@ -156,7 +163,7 @@ func parseKey(msg *mux.Message) (string, error) {
 	}
 	vars := strings.Split(auth, "=")
 	if len(vars) != 2 || vars[0] != "auth" {
-		return "", errors.New("failed auth")
+		return "", coap.ErrUnauthorized
 	}
 	return vars[1], nil
 }
