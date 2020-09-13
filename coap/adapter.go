@@ -11,11 +11,15 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/mainflux/mainflux/pkg/errors"
+	broker "github.com/nats-io/nats.go"
 
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/pkg/messaging"
 )
+
+const chansPrefix = "channels"
 
 // Exported errors
 var (
@@ -30,7 +34,7 @@ type Service interface {
 
 	// Subscribes to channel with specified id, subtopic and adds subscription to
 	// service map of subscriptions under given ID.
-	Subscribe(ctx context.Context, key, chanID, subtopic string, o Observer) error
+	Subscribe(ctx context.Context, key, chanID, subtopic string, h Handler) error
 
 	// Unsubscribe method is used to stop observing resource.
 	Unsubscribe(ctx context.Context, key, chanID, subptopic, token string) error
@@ -40,19 +44,19 @@ var _ Service = (*adapterService)(nil)
 
 // Observers is a map of maps,
 type adapterService struct {
-	auth      mainflux.ThingsServiceClient
-	ps        messaging.PubSub
-	observers map[string]observers
-	obsLock   sync.RWMutex
+	auth     mainflux.ThingsServiceClient
+	conn     *broker.Conn
+	handlers map[string]handlers
+	obsLock  sync.RWMutex
 }
 
 // New instantiates the CoAP adapter implementation.
-func New(auth mainflux.ThingsServiceClient, ps messaging.PubSub) Service {
+func New(auth mainflux.ThingsServiceClient, nc *broker.Conn) Service {
 	as := &adapterService{
-		auth: auth,
-		// ps:        ps,
-		observers: make(map[string]observers),
-		obsLock:   sync.RWMutex{},
+		auth:     auth,
+		conn:     nc,
+		handlers: make(map[string]handlers),
+		obsLock:  sync.RWMutex{},
 	}
 
 	// go func() {
@@ -80,17 +84,20 @@ func (svc *adapterService) Publish(ctx context.Context, key string, msg messagin
 	}
 	msg.Publisher = thid.GetValue()
 
-	endpoint := fmt.Sprintf("%s.%s", msg.Channel, msg.Subtopic)
-	svc.obsLock.RLock()
-	for _, o := range svc.observers[endpoint] {
-		o.Handle(msg)
+	data, err := proto.Marshal(&msg)
+	if err != nil {
+		return err
 	}
-	svc.obsLock.RUnlock()
-	return nil
-	// return svc.ps.Publish(msg.Channel, msg)
+
+	subject := fmt.Sprintf("%s.%s", chansPrefix, msg.Channel)
+	if msg.Subtopic != "" {
+		subject = fmt.Sprintf("%s.%s", subject, msg.Subtopic)
+	}
+
+	return svc.conn.Publish(subject, data)
 }
 
-func (svc *adapterService) Subscribe(ctx context.Context, key, chanID, subtopic string, o Observer) error {
+func (svc *adapterService) Subscribe(ctx context.Context, key, chanID, subtopic string, h Handler) error {
 	ar := &mainflux.AccessByKeyReq{
 		Token:  key,
 		ChanID: chanID,
@@ -99,14 +106,30 @@ func (svc *adapterService) Subscribe(ctx context.Context, key, chanID, subtopic 
 	if err != nil {
 		return errors.Wrap(ErrUnauthorized, err)
 	}
-	endpoint := fmt.Sprintf("%s.%s", chanID, subtopic)
+
+	subject := fmt.Sprintf("%s.%s", chansPrefix, chanID)
+	if subtopic != "" {
+		subject = fmt.Sprintf("%s.%s", subject, subtopic)
+	}
 
 	go func() {
-		<-o.Done()
-		fmt.Println("finished", endpoint, o.Token())
-		svc.remove(endpoint, o.Token())
+		<-h.Done()
+		svc.remove(subject, h.Token())
 	}()
-	return svc.put(endpoint, o.Token(), o)
+
+	sub, err := svc.conn.Subscribe(subject, func(m *broker.Msg) {
+		var msg messaging.Message
+		if err := proto.Unmarshal(m.Data, &msg); err != nil {
+			return
+		}
+		if err := h.Handle(msg); err != nil {
+		}
+	})
+	if err != nil {
+		return err
+	}
+	h.Sub(sub)
+	return svc.put(subject, h.Token(), h)
 }
 
 func (svc *adapterService) Unsubscribe(ctx context.Context, key, chanID, subtopic, token string) error {
@@ -118,32 +141,23 @@ func (svc *adapterService) Unsubscribe(ctx context.Context, key, chanID, subtopi
 	if err != nil {
 		return errors.Wrap(ErrUnauthorized, err)
 	}
-	endpoint := fmt.Sprintf("%s.%s", chanID, subtopic)
-
-	return svc.remove(endpoint, token)
-}
-
-func (svc *adapterService) get(topic, token string) (Observer, bool) {
-	svc.obsLock.RLock()
-	defer svc.obsLock.RUnlock()
-
-	obs, ok := svc.observers[topic]
-	if !ok {
-		return nil, ok
+	subject := fmt.Sprintf("%s.%s", chansPrefix, chanID)
+	if subtopic != "" {
+		subject = fmt.Sprintf("%s.%s", subject, subtopic)
 	}
-	o, ok := obs[token]
-	return o, ok
+
+	return svc.remove(subject, token)
 }
 
-func (svc *adapterService) put(endpoint, token string, o Observer) error {
+func (svc *adapterService) put(endpoint, token string, h Handler) error {
 	svc.obsLock.Lock()
 	defer svc.obsLock.Unlock()
 
-	obs, ok := svc.observers[endpoint]
+	obs, ok := svc.handlers[endpoint]
 	// If there are no observers, create map and assign it to the endpoint.
 	if !ok {
-		obs = observers{token: o}
-		svc.observers[endpoint] = obs
+		obs = handlers{token: h}
+		svc.handlers[endpoint] = obs
 		return nil
 	}
 	// If observer exists, cancel subscription and replace it.
@@ -152,7 +166,7 @@ func (svc *adapterService) put(endpoint, token string, o Observer) error {
 			return errors.Wrap(ErrUnsubscribe, err)
 		}
 	}
-	obs[token] = o
+	obs[token] = h
 	return nil
 }
 
@@ -160,7 +174,7 @@ func (svc *adapterService) remove(endpoint, token string) error {
 	svc.obsLock.Lock()
 	defer svc.obsLock.Unlock()
 
-	obs, ok := svc.observers[endpoint]
+	obs, ok := svc.handlers[endpoint]
 	if !ok {
 		return nil
 	}
@@ -172,7 +186,7 @@ func (svc *adapterService) remove(endpoint, token string) error {
 	delete(obs, token)
 	// If there are no observers left for the endpint, remove the map.
 	if len(obs) == 0 {
-		delete(svc.observers, endpoint)
+		delete(svc.handlers, endpoint)
 	}
 	return nil
 }

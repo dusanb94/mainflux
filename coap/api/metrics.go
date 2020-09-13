@@ -40,7 +40,7 @@ func (mm *metricsMiddleware) Publish(ctx context.Context, key string, msg messag
 	return mm.svc.Publish(ctx, key, msg)
 }
 
-func (mm *metricsMiddleware) Subscribe(ctx context.Context, key, chanID, subtopic string, o coap.Observer) error {
+func (mm *metricsMiddleware) Subscribe(ctx context.Context, key, chanID, subtopic string, o coap.Handler) error {
 	defer func(begin time.Time) {
 		mm.counter.With("method", "subscribe").Add(1)
 		mm.latency.With("method", "subscribe").Observe(time.Since(begin).Seconds())

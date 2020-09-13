@@ -33,7 +33,7 @@ func (lm *loggingMiddleware) Publish(ctx context.Context, key string, msg messag
 		if msg.Subtopic != "" {
 			destChannel = fmt.Sprintf("%s.%s", destChannel, msg.Subtopic)
 		}
-		message := fmt.Sprintf("Method publish to channel %s took %s to complete", destChannel, time.Since(begin))
+		message := fmt.Sprintf("Method publish to %s took %s to complete", destChannel, time.Since(begin))
 		if err != nil {
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return
@@ -44,9 +44,13 @@ func (lm *loggingMiddleware) Publish(ctx context.Context, key string, msg messag
 	return lm.svc.Publish(ctx, key, msg)
 }
 
-func (lm *loggingMiddleware) Subscribe(ctx context.Context, key, chanID, subtopic string, o coap.Observer) (err error) {
+func (lm *loggingMiddleware) Subscribe(ctx context.Context, key, chanID, subtopic string, o coap.Handler) (err error) {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method subscribe to channel %s and subtopic %s for client %s took %s to complete", chanID, subtopic, o.Token(), time.Since(begin))
+		destChannel := chanID
+		if subtopic != "" {
+			destChannel = fmt.Sprintf("%s.%s", destChannel, subtopic)
+		}
+		message := fmt.Sprintf("Method subscribe to %s for client %s took %s to complete", destChannel, o.Token(), time.Since(begin))
 		if err != nil {
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return

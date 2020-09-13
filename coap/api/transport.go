@@ -26,7 +26,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const protocol = "coap"
+const (
+	protocol  = "coap"
+	authQuery = "auth"
+)
 
 var channelPartRegExp = regexp.MustCompile(`^channels/([\w\-]+)/messages(/[^?]*)?(\?.*)?$`)
 
@@ -95,8 +98,8 @@ func handler(w mux.ResponseWriter, m *mux.Message) {
 			return
 		}
 		if obs == 0 {
-			o := coap.NewObserver(w.Client(), m.Token)
-			if err := service.Subscribe(context.Background(), key, msg.Channel, msg.Subtopic, o); err != nil {
+			h := coap.NewHandler(w.Client(), m.Token)
+			if err := service.Subscribe(context.Background(), key, msg.Channel, msg.Subtopic, h); err != nil {
 				switch {
 				case errors.Contains(err, coap.ErrUnauthorized):
 					resp.Code = codes.Unauthorized
@@ -126,7 +129,7 @@ func decodeMessage(msg *mux.Message) (messaging.Message, error) {
 		return messaging.Message{}, errMalformedSubtopic
 	}
 
-	st, err := parseSubtopic(path)
+	st, err := parseSubtopic(channelParts[2])
 	if err != nil {
 		return messaging.Message{}, err
 	}
@@ -162,7 +165,7 @@ func parseKey(msg *mux.Message) (string, error) {
 		return "", err
 	}
 	vars := strings.Split(auth, "=")
-	if len(vars) != 2 || vars[0] != "auth" {
+	if len(vars) != 2 || vars[0] != authQuery {
 		return "", coap.ErrUnauthorized
 	}
 	return vars[1], nil
