@@ -19,20 +19,19 @@ import (
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/coap"
 	"github.com/mainflux/mainflux/coap/api"
-	gocoap "github.com/plgd-dev/go-coap/v2"
-
 	logger "github.com/mainflux/mainflux/logger"
 	thingsapi "github.com/mainflux/mainflux/things/api/auth/grpc"
+	broker "github.com/nats-io/nats.go"
 	opentracing "github.com/opentracing/opentracing-go"
+	gocoap "github.com/plgd-dev/go-coap/v2"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
-
 	jconfig "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
 const (
-	defPort              = "5688"
+	defPort              = "5683"
 	defNatsURL           = "nats://localhost:4222"
 	defLogLevel          = "error"
 	defClientTLS         = "false"
@@ -81,14 +80,13 @@ func main() {
 
 	tc := thingsapi.NewClient(conn, thingsTracer, cfg.thingsAuthTimeout)
 
-	// pubSub, err := nats.NewPubSub(cfg.natsURL, "", logger)
-	// if err != nil {
-	// 	logger.Error(fmt.Sprintf("Failed to connect to NATS: %s", err))
-	// 	os.Exit(1)
-	// }
-	// defer pubSub.Close()
+	nc, err := broker.Connect(cfg.natsURL)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+	defer nc.Close()
 
-	svc := coap.New(tc, nil)
+	svc := coap.New(tc, nc)
 
 	svc = api.LoggingMiddleware(svc, logger)
 

@@ -98,8 +98,8 @@ func handler(w mux.ResponseWriter, m *mux.Message) {
 			return
 		}
 		if obs == 0 {
-			h := coap.NewHandler(w.Client(), m.Token)
-			if err := service.Subscribe(context.Background(), key, msg.Channel, msg.Subtopic, h); err != nil {
+			c := coap.NewClient(w.Client(), m.Token)
+			if err := service.Subscribe(context.Background(), key, msg.Channel, msg.Subtopic, c); err != nil {
 				switch {
 				case errors.Contains(err, coap.ErrUnauthorized):
 					resp.Code = codes.Unauthorized

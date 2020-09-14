@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Package coap contains the domain concept definitions needed to support
-// Mainflux coap adapter service functionality. All constant values are taken
+// Mainflux CoAP adapter service functionality. All constant values are taken
 // from RFC, and could be adjusted based on specific use case.
 package coap
 
@@ -34,7 +34,7 @@ type Service interface {
 
 	// Subscribes to channel with specified id, subtopic and adds subscription to
 	// service map of subscriptions under given ID.
-	Subscribe(ctx context.Context, key, chanID, subtopic string, h Handler) error
+	Subscribe(ctx context.Context, key, chanID, subtopic string, c Client) error
 
 	// Unsubscribe method is used to stop observing resource.
 	Unsubscribe(ctx context.Context, key, chanID, subptopic, token string) error
@@ -44,31 +44,20 @@ var _ Service = (*adapterService)(nil)
 
 // Observers is a map of maps,
 type adapterService struct {
-	auth     mainflux.ThingsServiceClient
-	conn     *broker.Conn
-	handlers map[string]handlers
-	obsLock  sync.RWMutex
+	auth      mainflux.ThingsServiceClient
+	conn      *broker.Conn
+	observers map[string]observers
+	obsLock   sync.RWMutex
 }
 
 // New instantiates the CoAP adapter implementation.
 func New(auth mainflux.ThingsServiceClient, nc *broker.Conn) Service {
 	as := &adapterService{
-		auth:     auth,
-		conn:     nc,
-		handlers: make(map[string]handlers),
-		obsLock:  sync.RWMutex{},
+		auth:      auth,
+		conn:      nc,
+		observers: make(map[string]observers),
+		obsLock:   sync.RWMutex{},
 	}
-
-	// go func() {
-	// 	for {
-	// 		time.Sleep(time.Second * 5)
-	// 		fmt.Println("testing size... ")
-	// 		as.obsLock.RLock()
-	// 		fmt.Println(as.observers)
-	// 		fmt.Println("Number of goroutines", runtime.NumGoroutine())
-	// 		as.obsLock.RUnlock()
-	// 	}
-	// }()
 
 	return as
 }
@@ -97,7 +86,7 @@ func (svc *adapterService) Publish(ctx context.Context, key string, msg messagin
 	return svc.conn.Publish(subject, data)
 }
 
-func (svc *adapterService) Subscribe(ctx context.Context, key, chanID, subtopic string, h Handler) error {
+func (svc *adapterService) Subscribe(ctx context.Context, key, chanID, subtopic string, c Client) error {
 	ar := &mainflux.AccessByKeyReq{
 		Token:  key,
 		ChanID: chanID,
@@ -113,23 +102,16 @@ func (svc *adapterService) Subscribe(ctx context.Context, key, chanID, subtopic 
 	}
 
 	go func() {
-		<-h.Done()
-		svc.remove(subject, h.Token())
+		<-c.Done()
+		svc.remove(subject, c.Token())
 	}()
 
-	sub, err := svc.conn.Subscribe(subject, func(m *broker.Msg) {
-		var msg messaging.Message
-		if err := proto.Unmarshal(m.Data, &msg); err != nil {
-			return
-		}
-		if err := h.Handle(msg); err != nil {
-		}
-	})
+	obs, err := NewObserver(subject, c, svc.conn)
 	if err != nil {
+		c.Cancel()
 		return err
 	}
-	h.Sub(sub)
-	return svc.put(subject, h.Token(), h)
+	return svc.put(subject, c.Token(), obs)
 }
 
 func (svc *adapterService) Unsubscribe(ctx context.Context, key, chanID, subtopic, token string) error {
@@ -149,15 +131,15 @@ func (svc *adapterService) Unsubscribe(ctx context.Context, key, chanID, subtopi
 	return svc.remove(subject, token)
 }
 
-func (svc *adapterService) put(endpoint, token string, h Handler) error {
+func (svc *adapterService) put(endpoint, token string, o Observer) error {
 	svc.obsLock.Lock()
 	defer svc.obsLock.Unlock()
 
-	obs, ok := svc.handlers[endpoint]
+	obs, ok := svc.observers[endpoint]
 	// If there are no observers, create map and assign it to the endpoint.
 	if !ok {
-		obs = handlers{token: h}
-		svc.handlers[endpoint] = obs
+		obs = observers{token: o}
+		svc.observers[endpoint] = obs
 		return nil
 	}
 	// If observer exists, cancel subscription and replace it.
@@ -166,7 +148,7 @@ func (svc *adapterService) put(endpoint, token string, h Handler) error {
 			return errors.Wrap(ErrUnsubscribe, err)
 		}
 	}
-	obs[token] = h
+	obs[token] = o
 	return nil
 }
 
@@ -174,7 +156,7 @@ func (svc *adapterService) remove(endpoint, token string) error {
 	svc.obsLock.Lock()
 	defer svc.obsLock.Unlock()
 
-	obs, ok := svc.handlers[endpoint]
+	obs, ok := svc.observers[endpoint]
 	if !ok {
 		return nil
 	}
@@ -186,7 +168,7 @@ func (svc *adapterService) remove(endpoint, token string) error {
 	delete(obs, token)
 	// If there are no observers left for the endpint, remove the map.
 	if len(obs) == 0 {
-		delete(svc.handlers, endpoint)
+		delete(svc.observers, endpoint)
 	}
 	return nil
 }

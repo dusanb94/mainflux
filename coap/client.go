@@ -8,65 +8,55 @@ import (
 
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/pkg/messaging"
-	broker "github.com/nats-io/nats.go"
 	"github.com/plgd-dev/go-coap/v2/message"
 	"github.com/plgd-dev/go-coap/v2/message/codes"
 	mux "github.com/plgd-dev/go-coap/v2/mux"
 )
 
-// Handler wraps CoAP client.
-type Handler interface {
-	Handle(m messaging.Message) error
+// Client wraps CoAP client.
+type Client interface {
+	SendMessage(m messaging.Message) error
 	Cancel() error
 	Done() <-chan struct{}
+	// In CoAP terminology similar to the Session ID.
 	Token() string
-	Sub(*broker.Subscription)
 }
 
-type handlers map[string]Handler
+type observers map[string]Observer
 
 // ErrOption indicates an error when adding an option.
 var ErrOption = errors.New("unable to set option")
 
-type handler struct {
-	client   mux.Client
-	token    message.Token
-	messages chan messaging.Message
-	sub      *broker.Subscription
+type client struct {
+	client mux.Client
+	token  message.Token
 }
 
-// NewHandler instantiates a new Observer.
-func NewHandler(client mux.Client, token message.Token) Handler {
-	return &handler{
-		client: client,
+// NewClient instantiates a new Observer.
+func NewClient(mc mux.Client, token message.Token) Client {
+	return &client{
+		client: mc,
 		token:  token,
 	}
 }
 
-func (h *handler) Sub(s *broker.Subscription) {
-	h.sub = s
+func (c *client) Done() <-chan struct{} {
+	return c.client.Context().Done()
 }
 
-func (h *handler) Done() <-chan struct{} {
-	return h.client.Context().Done()
+func (c *client) Cancel() error {
+	return c.client.Close()
 }
 
-func (h *handler) Cancel() error {
-	if err := h.sub.Unsubscribe(); err != nil {
-		return err
-	}
-	return h.client.Close()
+func (c *client) Token() string {
+	return c.token.String()
 }
 
-func (h *handler) Token() string {
-	return h.token.String()
-}
-
-func (h *handler) Handle(msg messaging.Message) error {
+func (c *client) SendMessage(msg messaging.Message) error {
 	m := message.Message{
 		Code:    codes.Content,
-		Token:   h.token,
-		Context: h.client.Context(),
+		Token:   c.token,
+		Context: c.client.Context(),
 		Body:    bytes.NewReader(msg.Payload),
 	}
 	var opts message.Options
@@ -81,5 +71,5 @@ func (h *handler) Handle(msg messaging.Message) error {
 		return errors.Wrap(ErrOption, err)
 	}
 	m.Options = opts
-	return h.client.WriteMessage(&m)
+	return c.client.WriteMessage(&m)
 }
