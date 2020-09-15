@@ -69,7 +69,7 @@ func (svc *adapterService) Publish(ctx context.Context, key string, msg messagin
 	}
 	thid, err := svc.auth.CanAccessByKey(ctx, ar)
 	if err != nil {
-		return err
+		return errors.Wrap(ErrUnauthorized, err)
 	}
 	msg.Publisher = thid.GetValue()
 

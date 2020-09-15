@@ -88,7 +88,6 @@ func handler(w mux.ResponseWriter, m *mux.Message) {
 		resp.Code = codes.Unauthorized
 		return
 	}
-
 	switch m.Code {
 	case codes.GET:
 		obs, err := m.Options.Observe()
@@ -99,23 +98,23 @@ func handler(w mux.ResponseWriter, m *mux.Message) {
 		}
 		if obs == 0 {
 			c := coap.NewClient(w.Client(), m.Token)
-			if err := service.Subscribe(context.Background(), key, msg.Channel, msg.Subtopic, c); err != nil {
-				switch {
-				case errors.Contains(err, coap.ErrUnauthorized):
-					resp.Code = codes.Unauthorized
-					return
-				case errors.Contains(err, coap.ErrUnsubscribe):
-					resp.Code = codes.InternalServerError
-				}
-			}
-			return
+			err = service.Subscribe(context.Background(), key, msg.Channel, msg.Subtopic, c)
 		}
 		service.Unsubscribe(context.Background(), key, msg.Channel, msg.Subtopic, m.Token.String())
 	case codes.POST:
-		if err := service.Publish(context.Background(), key, msg); err != nil {
-		}
+		err = service.Publish(context.Background(), key, msg)
 	default:
 		resp.Code = codes.NotFound
+		return
+	}
+	if err != nil {
+		switch {
+		case errors.Contains(err, coap.ErrUnauthorized):
+			resp.Code = codes.Unauthorized
+			return
+		case errors.Contains(err, coap.ErrUnsubscribe):
+			resp.Code = codes.InternalServerError
+		}
 	}
 }
 
