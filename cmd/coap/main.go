@@ -32,21 +32,21 @@ import (
 
 const (
 	defPort              = "5683"
+	defProtocol          = "udp"
 	defNatsURL           = "nats://localhost:4222"
 	defLogLevel          = "error"
 	defClientTLS         = "false"
 	defCACerts           = ""
-	defPingPeriod        = "12"
 	defJaegerURL         = ""
 	defThingsAuthURL     = "localhost:8181"
 	defThingsAuthTimeout = "1s"
 
 	envPort              = "MF_COAP_ADAPTER_PORT"
+	envProtocol          = "MF_COAP_ADAPTER_PROTOCOL"
 	envNatsURL           = "MF_NATS_URL"
 	envLogLevel          = "MF_COAP_ADAPTER_LOG_LEVEL"
 	envClientTLS         = "MF_COAP_ADAPTER_CLIENT_TLS"
 	envCACerts           = "MF_COAP_ADAPTER_CA_CERTS"
-	envPingPeriod        = "MF_COAP_ADAPTER_PING_PERIOD"
 	envJaegerURL         = "MF_JAEGER_URL"
 	envThingsAuthURL     = "MF_THINGS_AUTH_GRPC_URL"
 	envThingsAuthTimeout = "MF_THINGS_AUTH_GRPC_TIMEOUT"
@@ -54,11 +54,11 @@ const (
 
 type config struct {
 	port              string
+	protocol          string
 	natsURL           string
 	logLevel          string
 	clientTLS         bool
 	caCerts           string
-	pingPeriod        time.Duration
 	jaegerURL         string
 	thingsAuthURL     string
 	thingsAuthTimeout time.Duration
@@ -127,15 +127,6 @@ func loadConfig() config {
 		log.Fatalf("Invalid value passed for %s\n", envClientTLS)
 	}
 
-	pp, err := strconv.ParseInt(mainflux.Env(envPingPeriod, defPingPeriod), 10, 64)
-	if err != nil {
-		log.Fatalf("Invalid value passed for %s\n", envPingPeriod)
-	}
-
-	if pp < 1 || pp > 24 {
-		log.Fatalf("Value of %s must be between 1 and 24", envPingPeriod)
-	}
-
 	authTimeout, err := time.ParseDuration(mainflux.Env(envThingsAuthTimeout, defThingsAuthTimeout))
 	if err != nil {
 		log.Fatalf("Invalid %s value: %s", envThingsAuthTimeout, err.Error())
@@ -144,10 +135,10 @@ func loadConfig() config {
 	return config{
 		natsURL:           mainflux.Env(envNatsURL, defNatsURL),
 		port:              mainflux.Env(envPort, defPort),
+		protocol:          mainflux.Env(envProtocol, defProtocol),
 		logLevel:          mainflux.Env(envLogLevel, defLogLevel),
 		clientTLS:         tls,
 		caCerts:           mainflux.Env(envCACerts, defCACerts),
-		pingPeriod:        time.Duration(pp),
 		jaegerURL:         mainflux.Env(envJaegerURL, defJaegerURL),
 		thingsAuthURL:     mainflux.Env(envThingsAuthURL, defThingsAuthURL),
 		thingsAuthTimeout: authTimeout,
@@ -211,7 +202,5 @@ func startHTTPServer(port string, logger logger.Logger, errs chan error) {
 func startCOAPServer(cfg config, svc coap.Service, auth mainflux.ThingsServiceClient, l logger.Logger, errs chan error) {
 	p := fmt.Sprintf(":%s", cfg.port)
 	l.Info(fmt.Sprintf("CoAP adapter service started, exposed port %s", cfg.port))
-	r := api.MakeCoAPHandler(svc, l)
-	// errs <- gocoap.ListenAndServe("udp", p, api.MakeCOAPHandler(svc, auth, l, respChan, cfg.pingPeriod))
-	errs <- gocoap.ListenAndServe("udp", p, r)
+	errs <- gocoap.ListenAndServe(cfg.protocol, p, api.MakeCoAPHandler(svc, l))
 }

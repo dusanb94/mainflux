@@ -15,11 +15,11 @@ import (
 
 // Client wraps CoAP client.
 type Client interface {
+	// In CoAP terminology, Token similar to the Session ID.
+	Token() string
 	SendMessage(m messaging.Message) error
 	Cancel() error
 	Done() <-chan struct{}
-	// In CoAP terminology similar to the Session ID.
-	Token() string
 }
 
 type observers map[string]Observer
