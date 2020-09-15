@@ -119,8 +119,7 @@ func (svc *adapterService) Unsubscribe(ctx context.Context, key, chanID, subtopi
 		Token:  key,
 		ChanID: chanID,
 	}
-	_, err := svc.auth.CanAccessByKey(ctx, ar)
-	if err != nil {
+	if _, err := svc.auth.CanAccessByKey(ctx, ar); err != nil {
 		return errors.Wrap(ErrUnauthorized, err)
 	}
 	subject := fmt.Sprintf("%s.%s", chansPrefix, chanID)
