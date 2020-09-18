@@ -47,7 +47,7 @@ type adapterService struct {
 	auth      mainflux.ThingsServiceClient
 	conn      *broker.Conn
 	observers map[string]observers
-	obsLock   sync.RWMutex
+	obsLock   sync.Mutex
 }
 
 // New instantiates the CoAP adapter implementation.
@@ -56,7 +56,7 @@ func New(auth mainflux.ThingsServiceClient, nc *broker.Conn) Service {
 		auth:      auth,
 		conn:      nc,
 		observers: make(map[string]observers),
-		obsLock:   sync.RWMutex{},
+		obsLock:   sync.Mutex{},
 	}
 
 	return as
