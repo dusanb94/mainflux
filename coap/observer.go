@@ -21,8 +21,8 @@ func NewObserver(subject string, c Client, conn *broker.Conn) (Observer, error) 
 		if err := proto.Unmarshal(m.Data, &msg); err != nil {
 			return
 		}
-		if err := c.SendMessage(msg); err != nil {
-		}
+		// There is no error handling, but the client takes care to log the error.
+		c.SendMessage(msg)
 	})
 	if err != nil {
 		return nil, err

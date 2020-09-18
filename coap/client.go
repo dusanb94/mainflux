@@ -5,7 +5,9 @@ package coap
 
 import (
 	"bytes"
+	"fmt"
 
+	"github.com/mainflux/mainflux/logger"
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/pkg/messaging"
 	"github.com/plgd-dev/go-coap/v2/message"
@@ -30,13 +32,15 @@ var ErrOption = errors.New("unable to set option")
 type client struct {
 	client mux.Client
 	token  message.Token
+	logger logger.Logger
 }
 
 // NewClient instantiates a new Observer.
-func NewClient(mc mux.Client, token message.Token) Client {
+func NewClient(mc mux.Client, token message.Token, l logger.Logger) Client {
 	return &client{
 		client: mc,
 		token:  token,
+		logger: l,
 	}
 }
 
@@ -68,8 +72,13 @@ func (c *client) SendMessage(msg messaging.Message) error {
 		opts, n, err = opts.SetContentFormat(buff, message.TextPlain)
 	}
 	if err != nil {
+		c.logger.Error(fmt.Sprintf("Can't set content format: %s.", err))
 		return errors.Wrap(ErrOption, err)
 	}
 	m.Options = opts
-	return c.client.WriteMessage(&m)
+	err = c.client.WriteMessage(&m)
+	if err != nil {
+		c.logger.Error(fmt.Sprintf("Error sending message: %s.", err))
+	}
+	return err
 }

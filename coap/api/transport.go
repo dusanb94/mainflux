@@ -90,15 +90,17 @@ func handler(w mux.ResponseWriter, m *mux.Message) {
 	}
 	switch m.Code {
 	case codes.GET:
-		obs, err := m.Options.Observe()
+		var obs uint32
+		obs, err = m.Options.Observe()
 		if err != nil {
 			resp.Code = codes.BadOption
 			logger.Warn(fmt.Sprintf("Error reading observe option: %s", err))
 			return
 		}
 		if obs == 0 {
-			c := coap.NewClient(w.Client(), m.Token)
+			c := coap.NewClient(w.Client(), m.Token, logger)
 			err = service.Subscribe(context.Background(), key, msg.Channel, msg.Subtopic, c)
+			break
 		}
 		service.Unsubscribe(context.Background(), key, msg.Channel, msg.Subtopic, m.Token.String())
 	case codes.POST:
