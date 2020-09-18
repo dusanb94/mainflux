@@ -91,8 +91,7 @@ func (svc *adapterService) Subscribe(ctx context.Context, key, chanID, subtopic 
 		Token:  key,
 		ChanID: chanID,
 	}
-	_, err := svc.auth.CanAccessByKey(ctx, ar)
-	if err != nil {
+	if _, err := svc.auth.CanAccessByKey(ctx, ar); err != nil {
 		return errors.Wrap(ErrUnauthorized, err)
 	}
 
