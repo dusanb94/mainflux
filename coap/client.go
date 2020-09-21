@@ -76,9 +76,9 @@ func (c *client) SendMessage(msg messaging.Message) error {
 		return errors.Wrap(ErrOption, err)
 	}
 	m.Options = opts
-	err = c.client.WriteMessage(&m)
-	if err != nil {
+	if err := c.client.WriteMessage(&m); err != nil {
 		c.logger.Error(fmt.Sprintf("Error sending message: %s.", err))
+		return err
 	}
-	return err
+	return nil
 }
