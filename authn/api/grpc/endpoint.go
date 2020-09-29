@@ -26,10 +26,10 @@ func issueEndpoint(svc authn.Service) endpoint.Endpoint {
 
 		_, secret, err := svc.Issue(ctx, req.id, req.email, key)
 		if err != nil {
-			return identityRes{}, err
+			return nil, err
 		}
 
-		return identityRes{secret, nil}, nil
+		return issueRes{secret, nil}, nil
 	}
 }
 
@@ -42,9 +42,14 @@ func identifyEndpoint(svc authn.Service) endpoint.Endpoint {
 
 		id, err := svc.Identify(ctx, req.token)
 		if err != nil {
-			return identityRes{}, err
+			return nil, err
 		}
 
-		return identityRes{id, nil}, nil
+		ret := identityRes{
+			id:    id.ID,
+			email: id.Email,
+			err:   nil,
+		}
+		return ret, nil
 	}
 }

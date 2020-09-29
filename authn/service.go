@@ -55,7 +55,7 @@ type Service interface {
 	// Identify validates token token. If token is valid, content
 	// is returned. If token is invalid, or invocation failed for some
 	// other reason, non-nil error value is returned in response.
-	Identify(ctx context.Context, token string) (string, error)
+	Identify(ctx context.Context, token string) (Identity, error)
 }
 
 var _ Service = (*service)(nil)
@@ -109,36 +109,36 @@ func (svc service) Retrieve(ctx context.Context, issuer, id string) (Key, error)
 	return svc.keys.Retrieve(ctx, email, id)
 }
 
-func (svc service) Identify(ctx context.Context, token string) (string, error) {
+func (svc service) Identify(ctx context.Context, token string) (Identity, error) {
 	c, err := svc.tokenizer.Parse(token)
 	if err != nil {
-		return "", errors.Wrap(errIdentify, err)
+		return Identity{}, errors.Wrap(errIdentify, err)
 	}
 
 	switch c.Type {
 	case APIKey:
 		k, err := svc.keys.Retrieve(ctx, c.Issuer, c.ID)
 		if err != nil {
-			return "", err
+			return Identity{}, err
 		}
 		// Auto revoke expired key.
 		if k.Expired() {
 			svc.keys.Remove(ctx, c.Issuer, c.ID)
-			return "", ErrKeyExpired
+			return Identity{}, ErrKeyExpired
 		}
-		return c.Issuer, nil
+		return Identity{Email: c.Email}, nil
 	case RecoveryKey, UserKey:
 		if c.Issuer != issuerName {
-			return "", ErrUnauthorizedAccess
+			return Identity{}, ErrUnauthorizedAccess
 		}
-		return c.Secret, nil
+		return Identity{Email: c.Email}, nil
 	default:
-		return "", ErrUnauthorizedAccess
+		return Identity{}, ErrUnauthorizedAccess
 	}
 }
 
 func (svc service) tmpKey(id, email string, duration time.Duration, key Key) (Key, string, error) {
-	key.Secret = email
+	key.Email = email
 	key.Issuer = issuerName
 	key.ExpiresAt = key.IssuedAt.Add(duration)
 	secret, err := svc.tokenizer.Issue(key)
@@ -146,7 +146,7 @@ func (svc service) tmpKey(id, email string, duration time.Duration, key Key) (Ke
 		return Key{}, "", errors.Wrap(errIssueTmp, err)
 	}
 
-	key.Secret = secret
+	key.Email = secret
 	return key, secret, nil
 }
 
@@ -167,7 +167,7 @@ func (svc service) userKey(ctx context.Context, id, email string, key Key) (Key,
 	if err != nil {
 		return Key{}, "", errors.Wrap(errIssueUser, err)
 	}
-	key.Secret = secret
+	key.Email = secret
 
 	if _, err := svc.keys.Save(ctx, key); err != nil {
 		return Key{}, "", errors.Wrap(errIssueUser, err)
@@ -182,12 +182,9 @@ func (svc service) login(token string) (string, error) {
 		return "", err
 	}
 	// Only user key token is valid for login.
-	if c.Type != UserKey {
+	if c.Type != UserKey || c.Email == "" {
 		return "", ErrUnauthorizedAccess
 	}
 
-	if c.Secret == "" {
-		return "", ErrUnauthorizedAccess
-	}
-	return c.Secret, nil
+	return c.Email, nil
 }

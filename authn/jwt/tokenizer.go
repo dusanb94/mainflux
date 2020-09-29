@@ -37,7 +37,7 @@ func (svc tokenizer) Issue(key authn.Key) (string, error) {
 	claims := claims{
 		StandardClaims: jwt.StandardClaims{
 			Issuer:   key.Issuer,
-			Subject:  key.Secret,
+			Subject:  key.Email,
 			IssuedAt: key.IssuedAt.UTC().Unix(),
 		},
 		Type: &key.Type,
@@ -81,7 +81,7 @@ func (c claims) toKey() authn.Key {
 	key := authn.Key{
 		ID:       c.Id,
 		Issuer:   c.Issuer,
-		Secret:   c.Subject,
+		Email:    c.Subject,
 		IssuedAt: time.Unix(c.IssuedAt, 0).UTC(),
 	}
 	if c.ExpiresAt != 0 {

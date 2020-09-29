@@ -23,7 +23,7 @@ func key() authn.Key {
 		ID:        "id",
 		Type:      authn.UserKey,
 		Issuer:    "user@email.com",
-		Secret:    "",
+		Email:     "",
 		IssuedAt:  time.Now().UTC().Add(-10 * time.Second).Round(time.Second),
 		ExpiresAt: exp,
 	}

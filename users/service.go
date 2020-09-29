@@ -422,5 +422,5 @@ func (svc usersService) identify(ctx context.Context, token string) (string, err
 	if err != nil {
 		return "", errors.Wrap(ErrUnauthorizedAccess, err)
 	}
-	return email.GetValue(), nil
+	return email.GetEmail(), nil
 }

@@ -77,7 +77,7 @@ func TestIssue(t *testing.T) {
 		},
 		{
 			desc: "issue API key",
-			id:   userKey.Secret,
+			id:   userKey.Email,
 			kind: authn.APIKey,
 			err:  nil,
 			code: codes.OK,
@@ -113,7 +113,7 @@ func TestIdentify(t *testing.T) {
 	recoveryKey, _, err := svc.Issue(context.Background(), email, email, authn.Key{Type: authn.RecoveryKey, IssuedAt: time.Now()})
 	assert.Nil(t, err, fmt.Sprintf("Issuing recovery key expected to succeed: %s", err))
 
-	apiKey, _, err := svc.Issue(context.Background(), userKey.Secret, userKey.Secret, authn.Key{Type: authn.APIKey, IssuedAt: time.Now(), ExpiresAt: time.Now().Add(time.Minute)})
+	apiKey, _, err := svc.Issue(context.Background(), userKey.Email, userKey.Email, authn.Key{Type: authn.APIKey, IssuedAt: time.Now(), ExpiresAt: time.Now().Add(time.Minute)})
 	assert.Nil(t, err, fmt.Sprintf("Issuing API key expected to succeed: %s", err))
 
 	authAddr := fmt.Sprintf("localhost:%d", port)
@@ -129,14 +129,14 @@ func TestIdentify(t *testing.T) {
 	}{
 		{
 			desc:  "identify user with recovery token",
-			token: recoveryKey.Secret,
+			token: recoveryKey.Email,
 			id:    email,
 			err:   nil,
 			code:  codes.OK,
 		},
 		{
 			desc:  "identify user with API token",
-			token: apiKey.Secret,
+			token: apiKey.Email,
 			id:    email,
 			err:   nil,
 			code:  codes.OK,
@@ -159,7 +159,7 @@ func TestIdentify(t *testing.T) {
 
 	for _, tc := range cases {
 		id, err := client.Identify(context.Background(), &mainflux.Token{Value: tc.token})
-		assert.Equal(t, tc.id, id.GetValue(), fmt.Sprintf("%s: expected %s got %s", tc.desc, tc.id, id.GetValue()))
+		assert.Equal(t, tc.id, id.GetEmail(), fmt.Sprintf("%s: expected %s got %s", tc.desc, tc.id, id.GetEmail()))
 		e, ok := status.FromError(err)
 		assert.True(t, ok, "gRPC status can't be extracted from the error")
 		assert.Equal(t, tc.code, e.Code(), fmt.Sprintf("%s: expected %s got %s", tc.desc, tc.code, e.Code()))

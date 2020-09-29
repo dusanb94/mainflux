@@ -30,10 +30,16 @@ const (
 type Key struct {
 	ID        string
 	Type      uint32
-	Issuer    string
-	Secret    string
+	Issuer    string // Currently, user email. Should be a user ID.
+	Email     string // must not be here, no need for it. Used to create JWT?
 	IssuedAt  time.Time
 	ExpiresAt time.Time
+}
+
+// Identity contains ID and Email.
+type Identity struct {
+	ID    string
+	Email string
 }
 
 // Expired verifies if the key is expired.
