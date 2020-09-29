@@ -110,28 +110,28 @@ func (svc service) Retrieve(ctx context.Context, issuer, id string) (Key, error)
 }
 
 func (svc service) Identify(ctx context.Context, token string) (Identity, error) {
-	c, err := svc.tokenizer.Parse(token)
+	key, err := svc.tokenizer.Parse(token)
 	if err != nil {
 		return Identity{}, errors.Wrap(errIdentify, err)
 	}
 
-	switch c.Type {
+	switch key.Type {
 	case APIKey:
-		k, err := svc.keys.Retrieve(ctx, c.Issuer, c.ID)
+		k, err := svc.keys.Retrieve(ctx, key.Issuer, key.ID)
 		if err != nil {
 			return Identity{}, err
 		}
 		// Auto revoke expired key.
 		if k.Expired() {
-			svc.keys.Remove(ctx, c.Issuer, c.ID)
+			svc.keys.Remove(ctx, key.Issuer, key.ID)
 			return Identity{}, ErrKeyExpired
 		}
-		return Identity{Email: c.Email}, nil
+		return Identity{Email: key.Email}, nil
 	case RecoveryKey, UserKey:
-		if c.Issuer != issuerName {
+		if key.Issuer != issuerName {
 			return Identity{}, ErrUnauthorizedAccess
 		}
-		return Identity{Email: c.Email}, nil
+		return Identity{ID: key.Issuer, Email: key.Email}, nil
 	default:
 		return Identity{}, ErrUnauthorizedAccess
 	}
