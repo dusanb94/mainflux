@@ -24,12 +24,12 @@ func issueEndpoint(svc authn.Service) endpoint.Endpoint {
 			IssuedAt: now,
 		}
 
-		k, err := svc.Issue(ctx, req.issuer, key)
+		_, secret, err := svc.Issue(ctx, req.id, req.email, key)
 		if err != nil {
 			return identityRes{}, err
 		}
 
-		return identityRes{k.Secret, nil}, nil
+		return identityRes{secret, nil}, nil
 	}
 }
 

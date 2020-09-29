@@ -42,20 +42,20 @@ var (
 // implementation, and all of its decorators (e.g. logging & metrics).
 type Service interface {
 	// Issue issues a new Key.
-	Issue(context.Context, string, Key) (Key, error)
+	Issue(ctx context.Context, id, email string, key Key) (Key, string, error)
 
 	// Revoke removes the Key with the provided id that is
 	// issued by the user identified by the provided key.
-	Revoke(context.Context, string, string) error
+	Revoke(ctx context.Context, issuer, id string) error
 
 	// Retrieve retrieves data for the Key identified by the provided
 	// ID, that is issued by the user identified by the provided key.
-	Retrieve(context.Context, string, string) (Key, error)
+	Retrieve(ctx context.Context, issuer, id string) (Key, error)
 
 	// Identify validates token token. If token is valid, content
 	// is returned. If token is invalid, or invocation failed for some
 	// other reason, non-nil error value is returned in response.
-	Identify(context.Context, string) (string, error)
+	Identify(ctx context.Context, token string) (string, error)
 }
 
 var _ Service = (*service)(nil)
@@ -75,17 +75,17 @@ func New(keys KeyRepository, up mainflux.UUIDProvider, tokenizer Tokenizer) Serv
 	}
 }
 
-func (svc service) Issue(ctx context.Context, issuer string, key Key) (Key, error) {
+func (svc service) Issue(ctx context.Context, id, email string, key Key) (Key, string, error) {
 	if key.IssuedAt.IsZero() {
-		return Key{}, ErrInvalidKeyIssuedAt
+		return Key{}, "", ErrInvalidKeyIssuedAt
 	}
 	switch key.Type {
 	case APIKey:
-		return svc.userKey(ctx, issuer, key)
+		return svc.userKey(ctx, id, email, key)
 	case RecoveryKey:
-		return svc.tmpKey(issuer, recoveryDuration, key)
+		return svc.tmpKey(id, email, recoveryDuration, key)
 	default:
-		return svc.tmpKey(issuer, loginDuration, key)
+		return svc.tmpKey(id, email, loginDuration, key)
 	}
 }
 
@@ -137,43 +137,43 @@ func (svc service) Identify(ctx context.Context, token string) (string, error) {
 	}
 }
 
-func (svc service) tmpKey(issuer string, duration time.Duration, key Key) (Key, error) {
-	key.Secret = issuer
+func (svc service) tmpKey(id, email string, duration time.Duration, key Key) (Key, string, error) {
+	key.Secret = email
 	key.Issuer = issuerName
 	key.ExpiresAt = key.IssuedAt.Add(duration)
-	val, err := svc.tokenizer.Issue(key)
+	secret, err := svc.tokenizer.Issue(key)
 	if err != nil {
-		return Key{}, errors.Wrap(errIssueTmp, err)
+		return Key{}, "", errors.Wrap(errIssueTmp, err)
 	}
 
-	key.Secret = val
-	return key, nil
+	key.Secret = secret
+	return key, secret, nil
 }
 
-func (svc service) userKey(ctx context.Context, issuer string, key Key) (Key, error) {
-	email, err := svc.login(issuer)
+func (svc service) userKey(ctx context.Context, id, email string, key Key) (Key, string, error) {
+	email, err := svc.login(id)
 	if err != nil {
-		return Key{}, errors.Wrap(errIssueUser, err)
+		return Key{}, "", errors.Wrap(errIssueUser, err)
 	}
 	key.Issuer = email
 
-	id, err := svc.uuidProvider.ID()
+	keyID, err := svc.uuidProvider.ID()
 	if err != nil {
-		return Key{}, errors.Wrap(errIssueUser, err)
+		return Key{}, "", errors.Wrap(errIssueUser, err)
 	}
-	key.ID = id
+	key.ID = keyID
 
-	value, err := svc.tokenizer.Issue(key)
+	secret, err := svc.tokenizer.Issue(key)
 	if err != nil {
-		return Key{}, errors.Wrap(errIssueUser, err)
+		return Key{}, "", errors.Wrap(errIssueUser, err)
 	}
-	key.Secret = value
+	key.Secret = secret
 
 	if _, err := svc.keys.Save(ctx, key); err != nil {
-		return Key{}, errors.Wrap(errIssueUser, err)
+		return Key{}, "", errors.Wrap(errIssueUser, err)
 	}
 
-	return key, nil
+	return key, secret, nil
 }
 
 func (svc service) login(token string) (string, error) {

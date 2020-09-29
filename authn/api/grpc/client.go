@@ -50,7 +50,7 @@ func (client grpcClient) Issue(ctx context.Context, req *mainflux.IssueReq, _ ..
 	ctx, close := context.WithTimeout(ctx, client.timeout)
 	defer close()
 
-	res, err := client.issue(ctx, issueReq{issuer: req.GetIssuer(), keyType: req.Type})
+	res, err := client.issue(ctx, issueReq{id: req.GetId(), email: req.GetEmail(), keyType: req.Type})
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (client grpcClient) Issue(ctx context.Context, req *mainflux.IssueReq, _ ..
 
 func encodeIssueRequest(_ context.Context, grpcReq interface{}) (interface{}, error) {
 	req := grpcReq.(issueReq)
-	return &mainflux.IssueReq{Issuer: req.issuer, Type: req.keyType}, nil
+	return &mainflux.IssueReq{Id: req.id, Email: req.email, Type: req.keyType}, nil
 }
 
 func decodeIssueResponse(_ context.Context, grpcRes interface{}) (interface{}, error) {

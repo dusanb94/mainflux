@@ -29,13 +29,13 @@ func MetricsMiddleware(svc authn.Service, counter metrics.Counter, latency metri
 	}
 }
 
-func (ms *metricsMiddleware) Issue(ctx context.Context, issuer string, key authn.Key) (authn.Key, error) {
+func (ms *metricsMiddleware) Issue(ctx context.Context, id, email string, key authn.Key) (authn.Key, string, error) {
 	defer func(begin time.Time) {
 		ms.counter.With("method", "issue").Add(1)
 		ms.latency.With("method", "issue").Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	return ms.svc.Issue(ctx, issuer, key)
+	return ms.svc.Issue(ctx, id, email, key)
 }
 
 func (ms *metricsMiddleware) Revoke(ctx context.Context, issuer, id string) error {

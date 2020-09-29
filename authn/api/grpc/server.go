@@ -57,7 +57,7 @@ func (s *grpcServer) Identify(ctx context.Context, token *mainflux.Token) (*main
 
 func decodeIssueRequest(_ context.Context, grpcReq interface{}) (interface{}, error) {
 	req := grpcReq.(*mainflux.IssueReq)
-	return issueReq{issuer: req.GetIssuer(), keyType: req.GetType()}, nil
+	return issueReq{id: req.GetId(), email: req.GetEmail(), keyType: req.GetType()}, nil
 }
 
 func encodeIssueResponse(_ context.Context, grpcRes interface{}) (interface{}, error) {

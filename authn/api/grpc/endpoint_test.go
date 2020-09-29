@@ -47,7 +47,7 @@ func startGRPCServer(svc authn.Service, port int) {
 }
 
 func TestIssue(t *testing.T) {
-	userKey, err := svc.Issue(context.Background(), email, authn.Key{Type: authn.UserKey, IssuedAt: time.Now()})
+	userKey, _, err := svc.Issue(context.Background(), email, email, authn.Key{Type: authn.UserKey, IssuedAt: time.Now()})
 	assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
 
 	authAddr := fmt.Sprintf("localhost:%d", port)
@@ -99,7 +99,7 @@ func TestIssue(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		_, err := client.Issue(context.Background(), &mainflux.IssueReq{Issuer: tc.id, Type: tc.kind})
+		_, err := client.Issue(context.Background(), &mainflux.IssueReq{Id: tc.id, Type: tc.kind})
 		e, ok := status.FromError(err)
 		assert.True(t, ok, "gRPC status can't be extracted from the error")
 		assert.Equal(t, tc.code, e.Code(), fmt.Sprintf("%s: expected %s got %s", tc.desc, tc.code, e.Code()))
@@ -107,13 +107,13 @@ func TestIssue(t *testing.T) {
 }
 
 func TestIdentify(t *testing.T) {
-	userKey, err := svc.Issue(context.Background(), email, authn.Key{Type: authn.UserKey, IssuedAt: time.Now()})
+	userKey, _, err := svc.Issue(context.Background(), email, email, authn.Key{Type: authn.UserKey, IssuedAt: time.Now()})
 	assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
 
-	recoveryKey, err := svc.Issue(context.Background(), email, authn.Key{Type: authn.RecoveryKey, IssuedAt: time.Now()})
+	recoveryKey, _, err := svc.Issue(context.Background(), email, email, authn.Key{Type: authn.RecoveryKey, IssuedAt: time.Now()})
 	assert.Nil(t, err, fmt.Sprintf("Issuing recovery key expected to succeed: %s", err))
 
-	apiKey, err := svc.Issue(context.Background(), userKey.Secret, authn.Key{Type: authn.APIKey, IssuedAt: time.Now(), ExpiresAt: time.Now().Add(time.Minute)})
+	apiKey, _, err := svc.Issue(context.Background(), userKey.Secret, userKey.Secret, authn.Key{Type: authn.APIKey, IssuedAt: time.Now(), ExpiresAt: time.Now().Add(time.Minute)})
 	assert.Nil(t, err, fmt.Sprintf("Issuing API key expected to succeed: %s", err))
 
 	authAddr := fmt.Sprintf("localhost:%d", port)

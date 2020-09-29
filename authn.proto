@@ -44,6 +44,7 @@ message UserID {
 }
 
 message IssueReq {
-    string issuer = 1;
-    uint32 type   = 2;
+    string id    = 1;
+    string email = 2;
+    uint32 type  = 3;
 }

@@ -30,7 +30,7 @@ func (svc authServiceMock) Identify(ctx context.Context, in *mainflux.Token, opt
 }
 
 func (svc authServiceMock) Issue(ctx context.Context, in *mainflux.IssueReq, opts ...grpc.CallOption) (*mainflux.Token, error) {
-	if id, ok := svc.users[in.GetIssuer()]; ok {
+	if id, ok := svc.users[in.GetEmail()]; ok {
 		switch in.Type {
 		default:
 			return &mainflux.Token{Value: id}, nil

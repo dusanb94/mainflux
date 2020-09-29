@@ -81,7 +81,7 @@ func toJSON(data interface{}) string {
 
 func TestIssue(t *testing.T) {
 	svc := newService()
-	userKey, err := svc.Issue(context.Background(), email, authn.Key{Type: authn.UserKey, IssuedAt: time.Now()})
+	userKey, _, err := svc.Issue(context.Background(), email, email, authn.Key{Type: authn.UserKey, IssuedAt: time.Now()})
 	assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
 
 	ts := newServer(svc)
@@ -187,11 +187,11 @@ func TestIssue(t *testing.T) {
 
 func TestRetrieve(t *testing.T) {
 	svc := newService()
-	loginKey, err := svc.Issue(context.Background(), email, authn.Key{Type: authn.UserKey, IssuedAt: time.Now()})
+	loginKey, _, err := svc.Issue(context.Background(), email, email, authn.Key{Type: authn.UserKey, IssuedAt: time.Now()})
 	assert.Nil(t, err, fmt.Sprintf("Issuing login key expected to succeed: %s", err))
 	key := authn.Key{Type: authn.APIKey, IssuedAt: time.Now()}
 
-	k, err := svc.Issue(context.Background(), loginKey.Secret, key)
+	k, _, err := svc.Issue(context.Background(), loginKey.Secret, loginKey.Secret, key)
 	assert.Nil(t, err, fmt.Sprintf("Issuing login key expected to succeed: %s", err))
 
 	ts := newServer(svc)
@@ -239,11 +239,11 @@ func TestRetrieve(t *testing.T) {
 
 func TestRevoke(t *testing.T) {
 	svc := newService()
-	userKey, err := svc.Issue(context.Background(), email, authn.Key{Type: authn.UserKey, IssuedAt: time.Now()})
+	userKey, _, err := svc.Issue(context.Background(), email, email, authn.Key{Type: authn.UserKey, IssuedAt: time.Now()})
 	assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
 	key := authn.Key{Type: authn.APIKey, IssuedAt: time.Now()}
 
-	k, err := svc.Issue(context.Background(), userKey.Secret, key)
+	k, _, err := svc.Issue(context.Background(), userKey.Secret, userKey.Secret, key)
 	assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
 
 	ts := newServer(svc)
