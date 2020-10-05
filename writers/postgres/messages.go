@@ -4,13 +4,10 @@
 package postgres
 
 import (
-	"context"
-
-	"github.com/gofrs/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq" // required for DB access
 	"github.com/mainflux/mainflux/pkg/errors"
-	"github.com/mainflux/mainflux/pkg/transformers/senml"
+	"github.com/mainflux/mainflux/pkg/transformers/vega"
 	"github.com/mainflux/mainflux/writers"
 )
 
@@ -31,103 +28,70 @@ type postgresRepo struct {
 }
 
 // New returns new PostgreSQL writer.
-func New(db *sqlx.DB) writers.MessageRepository {
-	return &postgresRepo{db: db}
-}
+// func New(db *sqlx.DB) writers.MessageRepository {
+// 	return &postgresRepo{db: db}
+// }
 
-func (pr postgresRepo) Save(messages ...senml.Message) (err error) {
-	q := `INSERT INTO messages (id, channel, subtopic, publisher, protocol,
-    name, unit, value, string_value, bool_value, data_value, sum,
-    time, update_time)
-    VALUES (:id, :channel, :subtopic, :publisher, :protocol, :name, :unit,
-    :value, :string_value, :bool_value, :data_value, :sum,
-    :time, :update_time);`
+func (pr postgresRepo) Save(msg vega.Message) (err error) {
+	q := `INSERT INTO messages (dev, mei, iccid, sn, isnp, num, mutc, reason, dutc,
+	bat, temp, water, s_magnet, s_blocked, s_leakage, s_blowout VALUES (:dev, :mei, :iccid, :sn, :isnp, :num, :mutc, :reason, :dutc,
+	:bat, :temp, :water, :s_magnet, :s_blocked, :s_leakage, :s_blowout);`
 
-	tx, err := pr.db.BeginTxx(context.Background(), nil)
+	dbMsg := toDBMessage(msg)
 	if err != nil {
 		return errors.Wrap(errSaveMessage, err)
 	}
-	defer func() {
-		if err != nil {
-			if txErr := tx.Rollback(); txErr != nil {
-				err = errors.Wrap(err, errors.Wrap(errTransRollback, txErr))
+
+	if _, err := pr.db.NamedExec(q, dbMsg); err != nil {
+		pqErr, ok := err.(*pq.Error)
+		if ok {
+			switch pqErr.Code.Name() {
+			case errInvalid:
+				return errors.Wrap(errSaveMessage, ErrInvalidMessage)
 			}
-			return
 		}
 
-		if err = tx.Commit(); err != nil {
-			err = errors.Wrap(errSaveMessage, err)
-		}
-		return
-	}()
-
-	for _, msg := range messages {
-		dbth, err := toDBMessage(msg)
-		if err != nil {
-			return errors.Wrap(errSaveMessage, err)
-		}
-
-		if _, err := tx.NamedExec(q, dbth); err != nil {
-			pqErr, ok := err.(*pq.Error)
-			if ok {
-				switch pqErr.Code.Name() {
-				case errInvalid:
-					return errors.Wrap(errSaveMessage, ErrInvalidMessage)
-				}
-			}
-
-			return errors.Wrap(errSaveMessage, err)
-		}
+		return errors.Wrap(errSaveMessage, err)
 	}
 	return err
 }
 
 type dbMessage struct {
-	ID          string   `db:"id"`
-	Channel     string   `db:"channel"`
-	Subtopic    string   `db:"subtopic"`
-	Publisher   string   `db:"publisher"`
-	Protocol    string   `db:"protocol"`
-	Name        string   `db:"name"`
-	Unit        string   `db:"unit"`
-	Value       *float64 `db:"value"`
-	StringValue *string  `db:"string_value"`
-	BoolValue   *bool    `db:"bool_value"`
-	DataValue   *string  `db:"data_value"`
-	Sum         *float64 `db:"sum"`
-	Time        float64  `db:"time"`
-	UpdateTime  float64  `db:"update_time"`
+	Dev      string  `db:"dev"`
+	IMEI     string  `db:"imei"`
+	ICCID    string  `db:"iccd"`
+	SN       string  `db:"sn"`
+	Isnp     string  `db:"isnp"`
+	Num      int     `db:"num"`
+	MUTC     float64 `db:"mutc"`
+	Reason   string  `db:"reason"`
+	DUTC     int     `db:"dutc"`
+	Bat      int     `db:"bat"`
+	Temp     float64 `db:"temp"`
+	Water    string  `db:"water"`
+	SMagnet  int     `db:"s_magnet"`
+	SBlocked int     `db:"s_blocked"`
+	SLeakage int     `db:"s_leakage"`
+	SBlowout int     `db:"s_blowout"`
 }
 
-func toDBMessage(msg senml.Message) (dbMessage, error) {
-	id, err := uuid.NewV4()
-	if err != nil {
-		return dbMessage{}, err
+func toDBMessage(msg vega.Message) dbMessage {
+	return dbMessage{
+		Dev:      msg.D.Dev,
+		IMEI:     msg.D.IMEI,
+		ICCID:    msg.D.ICCID,
+		SN:       msg.D.SN,
+		Isnp:     msg.D.Isnp,
+		Num:      msg.D.Num,
+		MUTC:     msg.D.MUTC,
+		Reason:   msg.D.Reason,
+		DUTC:     msg.D.DUTC,
+		Bat:      msg.D.Bat,
+		Temp:     msg.D.Temp,
+		Water:    msg.D.Water,
+		SMagnet:  msg.D.SMagnet,
+		SBlocked: msg.D.SBlocked,
+		SLeakage: msg.D.SLeakage,
+		SBlowout: msg.D.SBlowout,
 	}
-
-	m := dbMessage{
-		ID:         id.String(),
-		Channel:    msg.Channel,
-		Subtopic:   msg.Subtopic,
-		Publisher:  msg.Publisher,
-		Protocol:   msg.Protocol,
-		Name:       msg.Name,
-		Unit:       msg.Unit,
-		Time:       msg.Time,
-		UpdateTime: msg.UpdateTime,
-		Sum:        msg.Sum,
-	}
-
-	switch {
-	case msg.Value != nil:
-		m.Value = msg.Value
-	case msg.StringValue != nil:
-		m.StringValue = msg.StringValue
-	case msg.DataValue != nil:
-		m.DataValue = msg.DataValue
-	case msg.BoolValue != nil:
-		m.BoolValue = msg.BoolValue
-	}
-
-	return m, nil
 }
