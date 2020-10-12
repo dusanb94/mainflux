@@ -24,8 +24,8 @@ var (
 	testLog, _  = log.New(os.Stdout, log.Info.String())
 	testDB      = "test"
 	streamsSize = 250
-	selectMsgs  = "SELECT * FROM test..messages"
-	dropMsgs    = "DROP SERIES FROM messages"
+	selectMsgs  = "SELECT * FROM test..senml"
+	dropMsgs    = "DROP SERIES FROM senml"
 	client      influxdata.Client
 	clientCfg   = influxdata.HTTPConfig{
 		Username: "test",
@@ -120,7 +120,7 @@ func TestSave(t *testing.T) {
 			msgs = append(msgs, msg)
 		}
 
-		err = repo.Save(msgs...)
+		err = repo.Save(msgs)
 		assert.Nil(t, err, fmt.Sprintf("Save operation expected to succeed: %s.\n", err))
 
 		row, err := queryDB(selectMsgs)

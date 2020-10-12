@@ -14,7 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-const collection = "mainflux"
+const collection = "senml"
 
 var errReadMessages = errors.New("failed to read messages from mongodb database")
 

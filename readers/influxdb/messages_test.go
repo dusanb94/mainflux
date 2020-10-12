@@ -61,11 +61,15 @@ func TestReadAll(t *testing.T) {
 	writer := writer.New(client, testDB)
 
 	messages := []senml.Message{}
+<<<<<<< HEAD
 	valSubtopicMsgs := []senml.Message{}
 	boolMsgs := []senml.Message{}
 	stringMsgs := []senml.Message{}
 	dataMsgs := []senml.Message{}
 
+=======
+	subtopicMsgs := []senml.Message{}
+>>>>>>> b1de0e4d (MF-1254 - Create universal JSON writer (#1260))
 	now := time.Now().UnixNano()
 	for i := 0; i < msgsNum; i++ {
 		// Mix possible values as well as value sum.
@@ -94,7 +98,7 @@ func TestReadAll(t *testing.T) {
 		messages = append(messages, msg)
 	}
 
-	err := writer.Save(messages...)
+	err := writer.Save(messages)
 	require.Nil(t, err, fmt.Sprintf("failed to store message to InfluxDB: %s", err))
 
 	reader := reader.New(client, testDB)
@@ -125,7 +129,7 @@ func TestReadAll(t *testing.T) {
 			page: readers.MessagesPage{
 				Total:    0,
 				Offset:   0,
-				Limit:    limit,
+				Limit:    10,
 				Messages: []senml.Message{},
 			},
 		},
