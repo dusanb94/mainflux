@@ -32,7 +32,7 @@ func TestKeySave(t *testing.T) {
 		{
 			desc: "save a new key",
 			key: authn.Key{
-				Issuer:    email,
+				Subject:   email,
 				IssuedAt:  time.Now(),
 				ExpiresAt: expTime,
 				ID:        id,
@@ -42,7 +42,7 @@ func TestKeySave(t *testing.T) {
 		{
 			desc: "save with duplicate id",
 			key: authn.Key{
-				Issuer:    email,
+				Subject:   email,
 				IssuedAt:  time.Now(),
 				ExpiresAt: expTime,
 				ID:        id,
@@ -65,41 +65,42 @@ func TestKeyRetrieve(t *testing.T) {
 	expTime := time.Now().Add(5 * time.Minute)
 	id, _ := uuidProvider.New().ID()
 	key := authn.Key{
-		Issuer:    email,
+		Subject:   email,
 		IssuedAt:  time.Now(),
 		ExpiresAt: expTime,
 		ID:        id,
+		IssuerID:  id,
 	}
 	_, err := repo.Save(context.Background(), key)
 	assert.Nil(t, err, fmt.Sprintf("Storing Key expected to succeed: %s", err))
 	cases := []struct {
-		desc   string
-		id     string
-		issuer string
-		err    error
+		desc    string
+		id      string
+		subject string
+		err     error
 	}{
 		{
-			desc:   "retrieve an existing key",
-			id:     key.ID,
-			issuer: key.Issuer,
-			err:    nil,
+			desc:    "retrieve an existing key",
+			id:      key.ID,
+			subject: key.Subject,
+			err:     nil,
 		},
 		{
-			desc:   "retrieve unauthorized",
-			id:     key.ID,
-			issuer: "",
-			err:    authn.ErrNotFound,
+			desc:    "retrieve unauthorized",
+			id:      key.ID,
+			subject: "",
+			err:     authn.ErrNotFound,
 		},
 		{
-			desc:   "retrieve unknown key",
-			id:     "",
-			issuer: key.Issuer,
-			err:    authn.ErrNotFound,
+			desc:    "retrieve unknown key",
+			id:      "",
+			subject: key.Issuer,
+			err:     authn.ErrNotFound,
 		},
 	}
 
 	for _, tc := range cases {
-		_, err := repo.Retrieve(context.Background(), tc.issuer, tc.id)
+		_, err := repo.Retrieve(context.Background(), tc.subject, tc.id)
 		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
@@ -112,35 +113,36 @@ func TestKeyRemove(t *testing.T) {
 	expTime := time.Now().Add(5 * time.Minute)
 	id, _ := uuidProvider.New().ID()
 	key := authn.Key{
-		Issuer:    email,
+		Subject:   email,
 		IssuedAt:  time.Now(),
 		ExpiresAt: expTime,
 		ID:        id,
+		IssuerID:  id,
 	}
 	_, err := repo.Save(opentracing.ContextWithSpan(context.Background(), opentracing.StartSpan("")), key)
 	assert.Nil(t, err, fmt.Sprintf("Storing Key expected to succeed: %s", err))
 	cases := []struct {
-		desc   string
-		id     string
-		issuer string
-		err    error
+		desc    string
+		id      string
+		subject string
+		err     error
 	}{
 		{
-			desc:   "remove an existing key",
-			id:     key.ID,
-			issuer: key.Issuer,
-			err:    nil,
+			desc:    "remove an existing key",
+			id:      key.ID,
+			subject: key.Issuer,
+			err:     nil,
 		},
 		{
-			desc:   "remove key that does not exist",
-			id:     key.ID,
-			issuer: key.Issuer,
-			err:    nil,
+			desc:    "remove key that does not exist",
+			id:      key.ID,
+			subject: key.Issuer,
+			err:     nil,
 		},
 	}
 
 	for _, tc := range cases {
-		err := repo.Remove(context.Background(), tc.issuer, tc.id)
+		err := repo.Remove(context.Background(), tc.subject, tc.id)
 		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }

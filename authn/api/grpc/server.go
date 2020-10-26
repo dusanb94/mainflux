@@ -61,8 +61,8 @@ func decodeIssueRequest(_ context.Context, grpcReq interface{}) (interface{}, er
 }
 
 func encodeIssueResponse(_ context.Context, grpcRes interface{}) (interface{}, error) {
-	res := grpcRes.(identityRes)
-	return &mainflux.Token{Value: res.id}, encodeError(res.err)
+	res := grpcRes.(issueRes)
+	return &mainflux.Token{Value: res.value}, encodeError(res.err)
 }
 
 func decodeIdentifyRequest(_ context.Context, grpcReq interface{}) (interface{}, error) {

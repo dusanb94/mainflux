@@ -21,10 +21,12 @@ func issueEndpoint(svc authn.Service) endpoint.Endpoint {
 		now := time.Now().UTC()
 		key := authn.Key{
 			Type:     req.keyType,
+			Subject:  req.email,
+			IssuerID: req.id,
 			IssuedAt: now,
 		}
 
-		_, secret, err := svc.Issue(ctx, req.id, req.email, key)
+		_, secret, err := svc.Issue(ctx, "", key)
 		if err != nil {
 			return nil, err
 		}

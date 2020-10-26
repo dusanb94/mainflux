@@ -30,8 +30,8 @@ const (
 type Key struct {
 	ID        string
 	Type      uint32
-	Issuer    string // Currently, user email. Should be a user ID.
-	Email     string // must not be here, no need for it. Used to create JWT?
+	IssuerID  string
+	Subject   string
 	IssuedAt  time.Time
 	ExpiresAt time.Time
 }
