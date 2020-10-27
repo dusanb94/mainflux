@@ -47,9 +47,6 @@ func startGRPCServer(svc authn.Service, port int) {
 }
 
 func TestIssue(t *testing.T) {
-	// _, loginSecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: email, Subject: email})
-	// assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
-
 	authAddr := fmt.Sprintf("localhost:%d", port)
 	conn, _ := grpc.Dial(authAddr, grpc.WithInsecure())
 	client := grpcapi.NewClient(mocktracer.New(), conn, time.Second)
@@ -111,62 +108,71 @@ func TestIssue(t *testing.T) {
 	}
 }
 
-// func TestIdentify(t *testing.T) {
-// 	userKey, _, err := svc.Issue(context.Background(), email, email, authn.Key{Type: authn.UserKey, IssuedAt: time.Now()})
-// 	assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
+func TestIdentify(t *testing.T) {
+	_, loginSecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: email, Subject: email})
+	assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
 
-// 	recoveryKey, _, err := svc.Issue(context.Background(), email, email, authn.Key{Type: authn.RecoveryKey, IssuedAt: time.Now()})
-// 	assert.Nil(t, err, fmt.Sprintf("Issuing recovery key expected to succeed: %s", err))
+	_, recoverySecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.RecoveryKey, IssuedAt: time.Now(), IssuerID: email, Subject: email})
+	assert.Nil(t, err, fmt.Sprintf("Issuing recovery key expected to succeed: %s", err))
 
-// 	apiKey, _, err := svc.Issue(context.Background(), userKey.Email, userKey.Email, authn.Key{Type: authn.APIKey, IssuedAt: time.Now(), ExpiresAt: time.Now().Add(time.Minute)})
-// 	assert.Nil(t, err, fmt.Sprintf("Issuing API key expected to succeed: %s", err))
+	_, apiSecret, err := svc.Issue(context.Background(), loginSecret, authn.Key{Type: authn.APIKey, IssuedAt: time.Now(), ExpiresAt: time.Now().Add(time.Minute), IssuerID: email, Subject: email})
+	assert.Nil(t, err, fmt.Sprintf("Issuing API key expected to succeed: %s", err))
 
-// 	authAddr := fmt.Sprintf("localhost:%d", port)
-// 	conn, _ := grpc.Dial(authAddr, grpc.WithInsecure())
-// 	client := grpcapi.NewClient(mocktracer.New(), conn, time.Second)
+	authAddr := fmt.Sprintf("localhost:%d", port)
+	conn, _ := grpc.Dial(authAddr, grpc.WithInsecure())
+	client := grpcapi.NewClient(mocktracer.New(), conn, time.Second)
 
-// 	cases := []struct {
-// 		desc  string
-// 		token string
-// 		id    string
-// 		err   error
-// 		code  codes.Code
-// 	}{
-// 		{
-// 			desc:  "identify user with recovery token",
-// 			token: recoveryKey.Email,
-// 			id:    email,
-// 			err:   nil,
-// 			code:  codes.OK,
-// 		},
-// 		{
-// 			desc:  "identify user with API token",
-// 			token: apiKey.Email,
-// 			id:    email,
-// 			err:   nil,
-// 			code:  codes.OK,
-// 		},
-// 		{
-// 			desc:  "identify user with invalid user token",
-// 			token: "invalid",
-// 			id:    "",
-// 			err:   status.Error(codes.Unauthenticated, "unauthorized access"),
-// 			code:  codes.Unauthenticated,
-// 		},
-// 		{
-// 			desc:  "identify user that doesn't exist",
-// 			token: "",
-// 			id:    "",
-// 			err:   status.Error(codes.InvalidArgument, "received invalid token request"),
-// 			code:  codes.InvalidArgument,
-// 		},
-// 	}
+	cases := []struct {
+		desc  string
+		token string
+		idt   mainflux.UserIdentity
+		err   error
+		code  codes.Code
+	}{
+		{
+			desc:  "identify user with user token",
+			token: loginSecret,
+			idt:   mainflux.UserIdentity{Email: email, Id: email},
+			err:   nil,
+			code:  codes.OK,
+		},
+		{
+			desc:  "identify user with recovery token",
+			token: recoverySecret,
+			idt:   mainflux.UserIdentity{Email: email, Id: email},
+			err:   nil,
+			code:  codes.OK,
+		},
+		{
+			desc:  "identify user with API token",
+			token: apiSecret,
+			idt:   mainflux.UserIdentity{Email: email, Id: email},
+			err:   nil,
+			code:  codes.OK,
+		},
+		{
+			desc:  "identify user with invalid user token",
+			token: "invalid",
+			idt:   mainflux.UserIdentity{},
+			err:   status.Error(codes.Unauthenticated, "unauthorized access"),
+			code:  codes.Unauthenticated,
+		},
+		{
+			desc:  "identify user that doesn't exist",
+			token: "",
+			idt:   mainflux.UserIdentity{},
+			err:   status.Error(codes.InvalidArgument, "received invalid token request"),
+			code:  codes.InvalidArgument,
+		},
+	}
 
-// 	for _, tc := range cases {
-// 		id, err := client.Identify(context.Background(), &mainflux.Token{Value: tc.token})
-// 		assert.Equal(t, tc.id, id.GetEmail(), fmt.Sprintf("%s: expected %s got %s", tc.desc, tc.id, id.GetEmail()))
-// 		e, ok := status.FromError(err)
-// 		assert.True(t, ok, "gRPC status can't be extracted from the error")
-// 		assert.Equal(t, tc.code, e.Code(), fmt.Sprintf("%s: expected %s got %s", tc.desc, tc.code, e.Code()))
-// 	}
-// }
+	for _, tc := range cases {
+		idt, err := client.Identify(context.Background(), &mainflux.Token{Value: tc.token})
+		if idt != nil {
+			assert.Equal(t, tc.idt, *idt, fmt.Sprintf("%s: expected %v got %v", tc.desc, tc.idt, *idt))
+		}
+		e, ok := status.FromError(err)
+		assert.True(t, ok, "gRPC status can't be extracted from the error")
+		assert.Equal(t, tc.code, e.Code(), fmt.Sprintf("%s: expected %s got %s", tc.desc, tc.code, e.Code()))
+	}
+}

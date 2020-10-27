@@ -150,8 +150,11 @@ func (svc service) userKey(ctx context.Context, token string, key Key) (Key, str
 	if err != nil {
 		return Key{}, "", errors.Wrap(errIssueUser, err)
 	}
+
 	key.IssuerID = id
-	key.Subject = sub
+	if key.Subject == "" {
+		key.Subject = sub
+	}
 
 	keyID, err := svc.uuidProvider.ID()
 	if err != nil {
