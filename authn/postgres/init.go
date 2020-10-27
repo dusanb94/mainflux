@@ -47,12 +47,12 @@ func migrateDB(db *sqlx.DB) error {
 				Id: "authn",
 				Up: []string{
 					`CREATE TABLE IF NOT EXISTS keys (
-                        id          UUID NOT NULL,
-                        type        SMALLINT,
-                        issuer      VARCHAR(254) NOT NULL,
-                        issued_at   TIMESTAMP NOT NULL,
-                        expires_at  TIMESTAMP,
-                        PRIMARY KEY (id, issuer)
+						id          UUID NOT NULL,
+						type        SMALLINT,
+						issuer      VARCHAR(254) NOT NULL,
+						issued_at   TIMESTAMP NOT NULL,
+						expires_at  TIMESTAMP,
+						PRIMARY KEY (id, issuer)
                     )`,
 				},
 				Down: []string{"DROP TABLE IF EXISTS keys"},
