@@ -20,6 +20,7 @@ import (
 const (
 	secret = "secret"
 	email  = "test@example.com"
+	id     = "testID"
 )
 
 func newService() authn.Service {
@@ -31,7 +32,7 @@ func newService() authn.Service {
 
 func TestIssue(t *testing.T) {
 	svc := newService()
-	_, secret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: email, Subject: email})
+	_, secret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: id, Subject: email})
 	assert.Nil(t, err, fmt.Sprintf("Issuing login key expected to succeed: %s", err))
 
 	cases := []struct {
@@ -110,12 +111,12 @@ func TestIssue(t *testing.T) {
 
 func TestRevoke(t *testing.T) {
 	svc := newService()
-	_, secret, err := svc.Issue(context.Background(), email, authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: email, Subject: email})
+	_, secret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: id, Subject: email})
 	assert.Nil(t, err, fmt.Sprintf("Issuing login key expected to succeed: %s", err))
 	key := authn.Key{
 		Type:     authn.APIKey,
 		IssuedAt: time.Now(),
-		IssuerID: email,
+		IssuerID: id,
 		Subject:  email,
 	}
 	newKey, _, err := svc.Issue(context.Background(), secret, key)
@@ -155,17 +156,17 @@ func TestRevoke(t *testing.T) {
 
 func TestRetrieve(t *testing.T) {
 	svc := newService()
-	_, secret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), Subject: email, IssuerID: email})
+	_, secret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), Subject: email, IssuerID: id})
 	assert.Nil(t, err, fmt.Sprintf("Issuing login key expected to succeed: %s", err))
 	key := authn.Key{
 		ID:       "id",
 		Type:     authn.APIKey,
-		IssuerID: email,
+		IssuerID: id,
 		Subject:  email,
 		IssuedAt: time.Now(),
 	}
 
-	_, userToken, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: email, Subject: email})
+	_, userToken, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: id, Subject: email})
 	assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
 
 	apiKey, apiToken, err := svc.Issue(context.Background(), secret, key)
@@ -221,13 +222,13 @@ func TestRetrieve(t *testing.T) {
 func TestIdentify(t *testing.T) {
 	svc := newService()
 
-	_, loginSecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: email, Subject: email})
+	_, loginSecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: id, Subject: email})
 	assert.Nil(t, err, fmt.Sprintf("Issuing login key expected to succeed: %s", err))
 
-	_, recoverySecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.RecoveryKey, IssuedAt: time.Now(), IssuerID: email, Subject: email})
+	_, recoverySecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.RecoveryKey, IssuedAt: time.Now(), IssuerID: id, Subject: email})
 	assert.Nil(t, err, fmt.Sprintf("Issuing reset key expected to succeed: %s", err))
 
-	_, apiSecret, err := svc.Issue(context.Background(), loginSecret, authn.Key{Type: authn.APIKey, IssuerID: email, Subject: email, IssuedAt: time.Now(), ExpiresAt: time.Now().Add(time.Minute)})
+	_, apiSecret, err := svc.Issue(context.Background(), loginSecret, authn.Key{Type: authn.APIKey, IssuerID: id, Subject: email, IssuedAt: time.Now(), ExpiresAt: time.Now().Add(time.Minute)})
 	assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
 
 	exp1 := time.Now().Add(-2 * time.Second)
@@ -246,19 +247,19 @@ func TestIdentify(t *testing.T) {
 		{
 			desc: "identify login key",
 			key:  loginSecret,
-			idt:  authn.Identity{email, email},
+			idt:  authn.Identity{id, email},
 			err:  nil,
 		},
 		{
 			desc: "identify recovery key",
 			key:  recoverySecret,
-			idt:  authn.Identity{email, email},
+			idt:  authn.Identity{id, email},
 			err:  nil,
 		},
 		{
 			desc: "identify API key",
 			key:  apiSecret,
-			idt:  authn.Identity{email, email},
+			idt:  authn.Identity{id, email},
 			err:  nil,
 		},
 		{

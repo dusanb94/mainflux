@@ -27,6 +27,7 @@ const (
 	port   = 8081
 	secret = "secret"
 	email  = "test@example.com"
+	id     = "testID"
 )
 
 var svc authn.Service
@@ -109,13 +110,13 @@ func TestIssue(t *testing.T) {
 }
 
 func TestIdentify(t *testing.T) {
-	_, loginSecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: email, Subject: email})
+	_, loginSecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: id, Subject: email})
 	assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
 
-	_, recoverySecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.RecoveryKey, IssuedAt: time.Now(), IssuerID: email, Subject: email})
+	_, recoverySecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.RecoveryKey, IssuedAt: time.Now(), IssuerID: id, Subject: email})
 	assert.Nil(t, err, fmt.Sprintf("Issuing recovery key expected to succeed: %s", err))
 
-	_, apiSecret, err := svc.Issue(context.Background(), loginSecret, authn.Key{Type: authn.APIKey, IssuedAt: time.Now(), ExpiresAt: time.Now().Add(time.Minute), IssuerID: email, Subject: email})
+	_, apiSecret, err := svc.Issue(context.Background(), loginSecret, authn.Key{Type: authn.APIKey, IssuedAt: time.Now(), ExpiresAt: time.Now().Add(time.Minute), IssuerID: id, Subject: email})
 	assert.Nil(t, err, fmt.Sprintf("Issuing API key expected to succeed: %s", err))
 
 	authAddr := fmt.Sprintf("localhost:%d", port)
@@ -132,21 +133,21 @@ func TestIdentify(t *testing.T) {
 		{
 			desc:  "identify user with user token",
 			token: loginSecret,
-			idt:   mainflux.UserIdentity{Email: email, Id: email},
+			idt:   mainflux.UserIdentity{Email: email, Id: id},
 			err:   nil,
 			code:  codes.OK,
 		},
 		{
 			desc:  "identify user with recovery token",
 			token: recoverySecret,
-			idt:   mainflux.UserIdentity{Email: email, Id: email},
+			idt:   mainflux.UserIdentity{Email: email, Id: id},
 			err:   nil,
 			code:  codes.OK,
 		},
 		{
 			desc:  "identify user with API token",
 			token: apiSecret,
-			idt:   mainflux.UserIdentity{Email: email, Id: email},
+			idt:   mainflux.UserIdentity{Email: email, Id: id},
 			err:   nil,
 			code:  codes.OK,
 		},

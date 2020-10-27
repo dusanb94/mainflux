@@ -81,7 +81,7 @@ func toJSON(data interface{}) string {
 
 func TestIssue(t *testing.T) {
 	svc := newService()
-	_, loginSecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: email, Subject: email})
+	_, loginSecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: id, Subject: email})
 	assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
 
 	ts := newServer(svc)
@@ -188,9 +188,9 @@ func TestIssue(t *testing.T) {
 
 func TestRetrieve(t *testing.T) {
 	svc := newService()
-	_, loginSecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: email, Subject: email})
+	_, loginSecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: id, Subject: email})
 	assert.Nil(t, err, fmt.Sprintf("Issuing login key expected to succeed: %s", err))
-	key := authn.Key{Type: authn.APIKey, IssuedAt: time.Now(), IssuerID: email, Subject: email}
+	key := authn.Key{Type: authn.APIKey, IssuedAt: time.Now(), IssuerID: id, Subject: email}
 
 	k, _, err := svc.Issue(context.Background(), loginSecret, key)
 	assert.Nil(t, err, fmt.Sprintf("Issuing login key expected to succeed: %s", err))
@@ -240,9 +240,9 @@ func TestRetrieve(t *testing.T) {
 
 func TestRevoke(t *testing.T) {
 	svc := newService()
-	_, loginSecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: email, Subject: email})
+	_, loginSecret, err := svc.Issue(context.Background(), "", authn.Key{Type: authn.UserKey, IssuedAt: time.Now(), IssuerID: id, Subject: email})
 	assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
-	key := authn.Key{Type: authn.APIKey, IssuedAt: time.Now(), IssuerID: email, Subject: email}
+	key := authn.Key{Type: authn.APIKey, IssuedAt: time.Now(), IssuerID: id, Subject: email}
 
 	k, _, err := svc.Issue(context.Background(), loginSecret, key)
 	assert.Nil(t, err, fmt.Sprintf("Issuing user key expected to succeed: %s", err))
