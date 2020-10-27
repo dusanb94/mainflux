@@ -42,7 +42,7 @@ var (
 // Token is a string value of the actual Key and is used to authenticate
 // an AuthN service request.
 type Service interface {
-	// Issue issues a new Key.
+	// Issue issues a new Key, returning its token value alongside.
 	Issue(ctx context.Context, token string, key Key) (Key, string, error)
 
 	// Revoke removes the Key with the provided id that is
