@@ -76,7 +76,17 @@ func retrieveEndpoint(svc authn.Service) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
+		ret := retrieveKeyRes{
+			ID:       key.ID,
+			IssuerID: key.IssuerID,
+			Subject:  key.Subject,
+			Type:     key.Type,
+			IssuedAt: key.IssuedAt,
+		}
+		if !key.ExpiresAt.IsZero() {
+			ret.ExpiresAt = &key.ExpiresAt
+		}
 
-		return key, nil
+		return ret, nil
 	}
 }
