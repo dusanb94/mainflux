@@ -36,6 +36,7 @@ func TestKeySave(t *testing.T) {
 				IssuedAt:  time.Now(),
 				ExpiresAt: expTime,
 				ID:        id,
+				IssuerID:  id,
 			},
 			err: nil,
 		},
@@ -46,6 +47,7 @@ func TestKeySave(t *testing.T) {
 				IssuedAt:  time.Now(),
 				ExpiresAt: expTime,
 				ID:        id,
+				IssuerID:  id,
 			},
 			err: authn.ErrConflict,
 		},
@@ -74,33 +76,33 @@ func TestKeyRetrieve(t *testing.T) {
 	_, err := repo.Save(context.Background(), key)
 	assert.Nil(t, err, fmt.Sprintf("Storing Key expected to succeed: %s", err))
 	cases := []struct {
-		desc    string
-		id      string
-		subject string
-		err     error
+		desc  string
+		id    string
+		owner string
+		err   error
 	}{
 		{
-			desc:    "retrieve an existing key",
-			id:      key.ID,
-			subject: key.Subject,
-			err:     nil,
+			desc:  "retrieve an existing key",
+			id:    key.ID,
+			owner: key.IssuerID,
+			err:   nil,
 		},
 		{
-			desc:    "retrieve unauthorized",
-			id:      key.ID,
-			subject: "",
-			err:     authn.ErrNotFound,
+			desc:  "retrieve unauthorized",
+			id:    key.ID,
+			owner: "",
+			err:   authn.ErrNotFound,
 		},
 		{
-			desc:    "retrieve unknown key",
-			id:      "",
-			subject: key.Issuer,
-			err:     authn.ErrNotFound,
+			desc:  "retrieve unknown key",
+			id:    "",
+			owner: key.IssuerID,
+			err:   authn.ErrNotFound,
 		},
 	}
 
 	for _, tc := range cases {
-		_, err := repo.Retrieve(context.Background(), tc.subject, tc.id)
+		_, err := repo.Retrieve(context.Background(), tc.owner, tc.id)
 		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
@@ -122,27 +124,27 @@ func TestKeyRemove(t *testing.T) {
 	_, err := repo.Save(opentracing.ContextWithSpan(context.Background(), opentracing.StartSpan("")), key)
 	assert.Nil(t, err, fmt.Sprintf("Storing Key expected to succeed: %s", err))
 	cases := []struct {
-		desc    string
-		id      string
-		subject string
-		err     error
+		desc  string
+		id    string
+		owner string
+		err   error
 	}{
 		{
-			desc:    "remove an existing key",
-			id:      key.ID,
-			subject: key.Issuer,
-			err:     nil,
+			desc:  "remove an existing key",
+			id:    key.ID,
+			owner: key.IssuerID,
+			err:   nil,
 		},
 		{
-			desc:    "remove key that does not exist",
-			id:      key.ID,
-			subject: key.Issuer,
-			err:     nil,
+			desc:  "remove key that does not exist",
+			id:    key.ID,
+			owner: key.IssuerID,
+			err:   nil,
 		},
 	}
 
 	for _, tc := range cases {
-		err := repo.Remove(context.Background(), tc.subject, tc.id)
+		err := repo.Remove(context.Background(), tc.owner, tc.id)
 		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
