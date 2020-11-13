@@ -8,7 +8,7 @@ There are *three types of authentication keys*:
 - API key - keys issued upon the user request
 - recovery key - password recovery key
 
-User keys are issued when user logs in. Each user request (other than `registration` and `login`) contains user key that is used to authenticate the user. API keys are similar to the User keys. The main difference is that API keys have configurable expiration time. If no time is set, the key will never expire. For that reason, API keys are _the only key type that can be revoked_. Recovery key is the password recovery key. It's short-lived token used for password recovery process.
+Each authentication key is represented and distributed by the corresponding [JWT](jwt.io). User keys are issued when user logs in. Each user request (other than `registration` and `login`) contains user key that is used to authenticate the user. API keys are similar to the User keys. The main difference is that API keys have configurable expiration time. If no time is set, the key will never expire. For that reason, API keys are _the only key type that can be revoked_. Recovery key is the password recovery key. It's short-lived token used for password recovery process.
 
 For in-depth explanation of the aforementioned scenarios, as well as thorough
 understanding of Mainflux, please check out the [official documentation][doc].
@@ -17,7 +17,7 @@ The following actions are supported:
 
 - create (all key types)
 - verify (all key types)
-- obtain (API keys only; secret is never obtained)
+- obtain (API keys only)
 - revoke (API keys only)
 
 ## Configuration
@@ -101,6 +101,6 @@ If `MF_EMAIL_TEMPLATE` doesn't point to any file service will function but passw
 ## Usage
 
 For more information about service capabilities and its usage, please check out
-the [API documentation](swagger.yaml).
+the [API documentation](openapi.yaml).
 
 [doc]: http://mainflux.readthedocs.io
