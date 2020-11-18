@@ -5,6 +5,7 @@ package cassandra
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gocql/gocql"
 	"github.com/mainflux/mainflux/pkg/errors"
@@ -13,6 +14,11 @@ import (
 )
 
 var errReadMessages = errors.New("failed to read messages from cassandra database")
+
+const (
+	defKeyspace = "messages"
+	measurement = "format"
+)
 
 var _ readers.MessageRepository = (*cassandraRepository)(nil)
 
@@ -35,8 +41,14 @@ func (cr cassandraRepository) ReadAll(chanID string, offset, limit uint64, query
 		vals = append(vals, val)
 	}
 	vals = append(vals, offset+limit)
+	format, ok := query[measurement]
+	if !ok {
+		format = defKeyspace
+	}
+	// Remove format filter and format the rest properly.
+	delete(query, format)
 
-	selectCQL := buildSelectQuery(chanID, offset, limit, names)
+	selectCQL := buildSelectQuery(format, chanID, offset, limit, names)
 	countCQL := buildCountQuery(chanID, names)
 
 	iter := cr.session.Query(selectCQL, vals...).Iter()
@@ -53,18 +65,30 @@ func (cr cassandraRepository) ReadAll(chanID string, offset, limit uint64, query
 	page := readers.MessagesPage{
 		Offset:   offset,
 		Limit:    limit,
-		Messages: []senml.Message{},
+		Messages: []interface{}{},
 	}
 
-	for scanner.Next() {
-		var msg senml.Message
-		err := scanner.Scan(&msg.Channel, &msg.Subtopic, &msg.Publisher, &msg.Protocol,
-			&msg.Name, &msg.Unit, &msg.Value, &msg.StringValue, &msg.BoolValue,
-			&msg.DataValue, &msg.Sum, &msg.Time, &msg.UpdateTime)
-		if err != nil {
-			return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
+	switch format {
+	case defKeyspace:
+		for scanner.Next() {
+			var msg senml.Message
+			err := scanner.Scan(&msg.Channel, &msg.Subtopic, &msg.Publisher, &msg.Protocol,
+				&msg.Name, &msg.Unit, &msg.Value, &msg.StringValue, &msg.BoolValue,
+				&msg.DataValue, &msg.Sum, &msg.Time, &msg.UpdateTime)
+			if err != nil {
+				return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
+			}
+			page.Messages = append(page.Messages, msg)
 		}
-		page.Messages = append(page.Messages, msg)
+	default:
+		for scanner.Next() {
+			msg := map[string]interface{}{}
+			err := scanner.Scan(&msg)
+			if err != nil {
+				return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
+			}
+			page.Messages = append(page.Messages, parseFlat(msg))
+		}
 	}
 
 	if err := cr.session.Query(countCQL, vals[:len(vals)-1]...).Scan(&page.Total); err != nil {
@@ -74,13 +98,12 @@ func (cr cassandraRepository) ReadAll(chanID string, offset, limit uint64, query
 	return page, nil
 }
 
-func buildSelectQuery(chanID string, offset, limit uint64, names []string) string {
+func buildSelectQuery(keyspace, chanID string, offset, limit uint64, names []string) string {
 	var condCQL string
-	cql := `SELECT channel, subtopic, publisher, protocol, name, unit,
+	cql := fmt.Sprintf(`SELECT channel, subtopic, publisher, protocol, name, unit,
 	        value, string_value, bool_value, data_value, sum, time,
-			update_time FROM senml WHERE channel = ? %s LIMIT ?
-			ALLOW FILTERING`
-
+			update_time FROM %s WHERE channel = ? %s LIMIT ?
+			ALLOW FILTERING`, keyspace, "%s")
 	for _, name := range names {
 		switch name {
 		case
@@ -98,7 +121,7 @@ func buildSelectQuery(chanID string, offset, limit uint64, names []string) strin
 
 func buildCountQuery(chanID string, names []string) string {
 	var condCQL string
-	cql := `SELECT COUNT(*) FROM senml WHERE channel = ? %s ALLOW FILTERING`
+	cql := `SELECT COUNT(*) FROM messages WHERE channel = ? %s ALLOW FILTERING`
 
 	for _, name := range names {
 		switch name {
@@ -113,4 +136,34 @@ func buildCountQuery(chanID string, names []string) string {
 	}
 
 	return fmt.Sprintf(cql, condCQL)
+}
+
+func parseFlat(flat interface{}) interface{} {
+	msg := make(map[string]interface{})
+	switch v := flat.(type) {
+	case map[string]interface{}:
+		for key, value := range v {
+			if value == nil {
+				continue
+			}
+			keys := strings.Split(key, "/")
+			n := len(keys)
+			if n == 1 {
+				msg[key] = value
+				continue
+			}
+			current := msg
+			for i, k := range keys {
+				if _, ok := current[k]; !ok {
+					current[k] = make(map[string]interface{})
+				}
+				if i == n-1 {
+					current[k] = value
+					break
+				}
+				current = current[k].(map[string]interface{})
+			}
+		}
+	}
+	return msg
 }

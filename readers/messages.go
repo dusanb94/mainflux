@@ -3,11 +3,7 @@
 
 package readers
 
-import (
-	"errors"
-
-	"github.com/mainflux/mainflux/pkg/transformers/senml"
-)
+import "errors"
 
 // ErrNotFound indicates that requested entity doesn't exist.
 var ErrNotFound = errors.New("entity not found")
@@ -25,5 +21,5 @@ type MessagesPage struct {
 	Total    uint64
 	Offset   uint64
 	Limit    uint64
-	Messages []senml.Message
+	Messages []interface{}
 }

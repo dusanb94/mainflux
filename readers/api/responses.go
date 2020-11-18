@@ -7,16 +7,15 @@ import (
 	"net/http"
 
 	"github.com/mainflux/mainflux"
-	"github.com/mainflux/mainflux/pkg/transformers/senml"
 )
 
 var _ mainflux.Response = (*pageRes)(nil)
 
 type pageRes struct {
-	Total    uint64          `json:"total"`
-	Offset   uint64          `json:"offset"`
-	Limit    uint64          `json:"limit"`
-	Messages []senml.Message `json:"messages"`
+	Total    uint64        `json:"total"`
+	Offset   uint64        `json:"offset"`
+	Limit    uint64        `json:"limit"`
+	Messages []interface{} `json:"messages,omitempty"`
 }
 
 func (res pageRes) Headers() map[string]string {

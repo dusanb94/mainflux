@@ -48,7 +48,7 @@ func migrateDB(db *sqlx.DB) error {
 			{
 				Id: "messages_1",
 				Up: []string{
-					`CREATE TABLE IF NOT EXISTS senml (
+					`CREATE TABLE IF NOT EXISTS messages (
                         id            UUID,
                         channel       UUID,
                         subtopic      VARCHAR(254),
@@ -64,27 +64,10 @@ func migrateDB(db *sqlx.DB) error {
                         time          FLOAT,
                         update_time   FLOAT,
                         PRIMARY KEY (id)
-					)`,
-				},
-				Down: []string{
-					"DROP TABLE senml",
-				},
-			},
-			{
-				Id: "messages_2",
-				Up: []string{
-					`CREATE TABLE IF NOT EXISTS json (
-                        id            UUID,
-                        channel       UUID,
-                        subtopic      VARCHAR(254),
-                        publisher     UUID,
-						protocol      TEXT,
-						payload       JSONB,
-                        PRIMARY KEY (id)
                     )`,
 				},
 				Down: []string{
-					"DROP TABLE json",
+					"DROP TABLE messages",
 				},
 			},
 		},

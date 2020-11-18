@@ -16,12 +16,14 @@ import (
 )
 
 const (
-	senmlPoints = "senml"
+	senmlPoints = "messages"
 	jsonPoints  = "json"
 )
 
-var errSaveMessage = errors.New("failed to save message to influxdb database")
-
+var (
+	errSaveMessage   = errors.New("failed to save message to influxdb database")
+	errMessageFormat = errors.New("invalid message format")
+)
 var _ writers.MessageRepository = (*influxRepo)(nil)
 
 type influxRepo struct {
@@ -39,16 +41,16 @@ func New(client influxdata.Client, database string) writers.MessageRepository {
 	}
 }
 
-func (repo *influxRepo) Save(messages interface{}) error {
+func (repo *influxRepo) Save(message interface{}) error {
 	pts, err := influxdata.NewBatchPoints(repo.cfg)
 	if err != nil {
 		return errors.Wrap(errSaveMessage, err)
 	}
-	switch messages.(type) {
-	case json.Message:
-		pts, err = repo.jsonPoints(pts, messages)
+	switch m := message.(type) {
+	case json.Messages:
+		pts, err = repo.jsonPoints(pts, m)
 	default:
-		pts, err = repo.senmlPoints(pts, messages)
+		pts, err = repo.senmlPoints(pts, m)
 	}
 	if err != nil {
 		return err
@@ -82,20 +84,20 @@ func (repo *influxRepo) senmlPoints(pts influxdata.BatchPoints, messages interfa
 	return pts, nil
 }
 
-func (repo *influxRepo) jsonPoints(pts influxdata.BatchPoints, messages interface{}) (influxdata.BatchPoints, error) {
-	msg, ok := messages.(json.Message)
-	if !ok {
-		return nil, errSaveMessage
+func (repo *influxRepo) jsonPoints(pts influxdata.BatchPoints, msgs json.Messages) (influxdata.BatchPoints, error) {
+	for i, m := range msgs.Messages {
+		t := time.Unix(0, m.Created+int64(i))
+		pt, err := influxdata.NewPoint(msgs.Format, jsonTags(m), m.Payload, t)
+		if err != nil {
+			return nil, errors.Wrap(errSaveMessage, err)
+		}
+		pts.AddPoint(pt)
 	}
-
-	tgs, flds := jsonTags(msg), jsonFields(msg)
-	t := time.Unix(0, msg.Created)
-
-	pt, err := influxdata.NewPoint(jsonPoints, tgs, flds, t)
-	if err != nil {
-		return nil, errors.Wrap(errSaveMessage, err)
-	}
-	pts.AddPoint(pt)
 
 	return pts, nil
+}
+
+type message struct {
+	json.Message
+	payload []map[string]interface{}
 }
