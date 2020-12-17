@@ -18,8 +18,7 @@ const (
 var errConnect = errors.New("failed to connect to MQTT broker")
 
 func newClient(address string, timeout time.Duration) (mqtt.Client, error) {
-	opts := mqtt.NewClientOptions().
-		AddBroker(address)
+	opts := mqtt.NewClientOptions().AddBroker(address)
 	client := mqtt.NewClient(opts)
 	token := client.Connect()
 	if token.Error() != nil {
