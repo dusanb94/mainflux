@@ -12,19 +12,14 @@ import (
 
 const (
 	protocol = "mqtt"
-	id       = "mqtt-publisher"
-	qos      = 1
+	qos      = 2
 )
 
 var errConnect = errors.New("failed to connect to MQTT broker")
 
 func newClient(address string, timeout time.Duration) (mqtt.Client, error) {
 	opts := mqtt.NewClientOptions().
-		AddBroker(address).
-		SetUsername(id).
-		SetPassword(id).
-		SetClientID(id).
-		SetCleanSession(false)
+		AddBroker(address)
 	client := mqtt.NewClient(opts)
 	token := client.Connect()
 	if token.Error() != nil {
