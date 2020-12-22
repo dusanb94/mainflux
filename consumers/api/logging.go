@@ -9,25 +9,28 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mainflux/mainflux/consumers"
 	log "github.com/mainflux/mainflux/logger"
-	"github.com/mainflux/mainflux/writers"
 )
 
-var _ writers.MessageRepository = (*loggingMiddleware)(nil)
+var _ consumers.MessageConsumer = (*loggingMiddleware)(nil)
 
 type loggingMiddleware struct {
 	logger log.Logger
-	svc    writers.MessageRepository
+	c      consumers.MessageConsumer
 }
 
 // LoggingMiddleware adds logging facilities to the adapter.
-func LoggingMiddleware(svc writers.MessageRepository, logger log.Logger) writers.MessageRepository {
-	return &loggingMiddleware{logger, svc}
+func LoggingMiddleware(c consumers.MessageConsumer, logger log.Logger) consumers.MessageConsumer {
+	return &loggingMiddleware{
+		logger: logger,
+		c:      c,
+	}
 }
 
-func (lm *loggingMiddleware) Save(msgs interface{}) (err error) {
+func (lm *loggingMiddleware) Consume(msgs interface{}) (err error) {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method save took %s to complete", time.Since(begin))
+		message := fmt.Sprintf("Method consume took %s to complete", time.Since(begin))
 		if err != nil {
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return
@@ -35,5 +38,5 @@ func (lm *loggingMiddleware) Save(msgs interface{}) (err error) {
 		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
 	}(time.Now())
 
-	return lm.svc.Save(msgs)
+	return lm.c.Consume(msgs)
 }
