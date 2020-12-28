@@ -40,9 +40,13 @@ func Start(sub messaging.Subscriber, consumer MessageConsumer, transformer trans
 
 func handle(t transformers.Transformer, c MessageConsumer) messaging.MessageHandler {
 	return func(msg messaging.Message) error {
-		m, err := t.Transform(msg)
-		if err != nil {
-			return err
+		m := interface{}(msg)
+		var err error
+		if t != nil {
+			m, err = t.Transform(msg)
+			if err != nil {
+				return err
+			}
 		}
 
 		return c.Consume(m)
