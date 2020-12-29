@@ -35,7 +35,7 @@ var (
 )
 
 func newService() readers.MessageRepository {
-	messages := []interface{}{}
+	var messages []interface{}
 	for i := 0; i < numOfMessages; i++ {
 		msg := senml.Message{
 			Channel:   chanID,

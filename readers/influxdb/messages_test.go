@@ -239,7 +239,7 @@ func TestReadAll(t *testing.T) {
 }
 
 func fromSenml(in []senml.Message) []interface{} {
-	ret := []interface{}{}
+	var ret []interface{}
 	for _, m := range in {
 		ret = append(ret, m)
 	}

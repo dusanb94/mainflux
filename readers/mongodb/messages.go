@@ -54,7 +54,7 @@ func (repo mongoRepository) ReadAll(chanID string, offset, limit uint64, query m
 	}
 	defer cursor.Close(context.Background())
 
-	messages := []interface{}{}
+	var messages []interface{}
 	switch collection {
 	case defCollection:
 		for cursor.Next(context.Background()) {
