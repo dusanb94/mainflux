@@ -70,8 +70,9 @@ func (repo mongoRepository) ReadAll(chanID string, offset, limit uint64, query m
 			if err := cursor.Decode(&m); err != nil {
 				return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
 			}
+			m["payload"] = parseFlat(m["payload"])
 
-			messages = append(messages, parseFlat(m))
+			messages = append(messages, m)
 		}
 	}
 
