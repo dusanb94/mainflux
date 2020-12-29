@@ -74,7 +74,7 @@ func (tr postgresRepository) ReadAll(chanID string, offset, limit uint64, query 
 	switch table {
 	case defTable:
 		for rows.Next() {
-			msg := dbMessage{Message: senml.Message{Channel: chanID}}
+			msg := dbMessage{Message: senml.Message{}}
 			if err := rows.StructScan(&msg); err != nil {
 				return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
 			}
