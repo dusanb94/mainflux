@@ -87,7 +87,15 @@ func (repo *influxRepo) senmlPoints(pts influxdata.BatchPoints, messages interfa
 func (repo *influxRepo) jsonPoints(pts influxdata.BatchPoints, msgs json.Messages) (influxdata.BatchPoints, error) {
 	for i, m := range msgs.Messages {
 		t := time.Unix(0, m.Created+int64(i))
-		pt, err := influxdata.NewPoint(msgs.Format, jsonTags(m), m.Payload, t)
+
+		// Copy first-level fields so that the original Payload is unchanged.
+		fields := make(map[string]interface{})
+		for k, v := range m.Payload {
+			fields[k] = v
+		}
+		// At least one known field need to exist so that COUNT can be performed.
+		fields["protocol"] = m.Protocol
+		pt, err := influxdata.NewPoint(msgs.Format, jsonTags(m), fields, t)
 		if err != nil {
 			return nil, errors.Wrap(errSaveMessage, err)
 		}

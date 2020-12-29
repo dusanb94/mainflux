@@ -21,6 +21,5 @@ func jsonTags(msg json.Message) tags {
 		"channel":   msg.Channel,
 		"subtopic":  msg.Subtopic,
 		"publisher": msg.Publisher,
-		"protocol":  msg.Protocol,
 	}
 }
