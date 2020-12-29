@@ -4,6 +4,7 @@
 package cassandra
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -83,12 +84,17 @@ func (cr cassandraRepository) ReadAll(chanID string, offset, limit uint64, query
 		}
 	default:
 		for scanner.Next() {
-			msg := map[string]interface{}{}
-			err := scanner.Scan(&msg)
+			var msg jsonMessage
+			err := scanner.Scan(&msg.Channel, &msg.Subtopic, &msg.Publisher, &msg.Protocol, &msg.Created, &msg.Payload)
 			if err != nil {
 				return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
 			}
-			page.Messages = append(page.Messages, parseFlat(msg))
+			m, err := msg.toMap()
+			if err != nil {
+				return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
+			}
+			m["payload"] = parseFlat(m["payload"])
+			page.Messages = append(page.Messages, m)
 		}
 	}
 
@@ -101,10 +107,14 @@ func (cr cassandraRepository) ReadAll(chanID string, offset, limit uint64, query
 
 func buildSelectQuery(keyspace, chanID string, offset, limit uint64, names []string) string {
 	var condCQL string
-	cql := fmt.Sprintf(`SELECT channel, subtopic, publisher, protocol, name, unit,
+	cql := `SELECT channel, subtopic, publisher, protocol, name, unit,
 	        value, string_value, bool_value, data_value, sum, time,
-			update_time FROM %s WHERE channel = ? %s LIMIT ?
+			update_time FROM messages WHERE channel = ? %s LIMIT ?
+			ALLOW FILTERING`
+	if keyspace != defKeyspace {
+		cql = fmt.Sprintf(`SELECT channel, subtopic, publisher, protocol, created, payload FROM %s WHERE channel = ? %s LIMIT ?
 			ALLOW FILTERING`, keyspace, "%s")
+	}
 	for _, name := range names {
 		switch name {
 		case
@@ -167,4 +177,32 @@ func parseFlat(flat interface{}) interface{} {
 		}
 	}
 	return msg
+}
+
+type jsonMessage struct {
+	ID        string
+	Channel   string
+	Created   int64
+	Subtopic  string
+	Publisher string
+	Protocol  string
+	Payload   string
+}
+
+func (msg jsonMessage) toMap() (map[string]interface{}, error) {
+	ret := map[string]interface{}{
+		"id":        msg.ID,
+		"channel":   msg.Channel,
+		"created":   msg.Created,
+		"subtopic":  msg.Subtopic,
+		"publisher": msg.Publisher,
+		"protocol":  msg.Protocol,
+		"payload":   map[string]interface{}{},
+	}
+	pld := make(map[string]interface{})
+	if err := json.Unmarshal([]byte(msg.Payload), &pld); err != nil {
+		return nil, err
+	}
+	ret["payload"] = pld
+	return ret, nil
 }

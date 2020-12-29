@@ -80,11 +80,11 @@ func (cr *cassandraRepository) insertJSON(msgs mfjson.Messages) error {
 		if err != nil {
 			return err
 		}
-		cql := `INSERT INTO %s (id, channel, created, subtopic, publisher, payload) VALUES (?, ?, ?, ?, ?, ?)`
+		cql := `INSERT INTO %s (id, channel, created, subtopic, publisher, protocol, payload) VALUES (?, ?, ?, ?, ?, ?, ?)`
 		cql = fmt.Sprintf(cql, msgs.Format)
 		id := gocql.TimeUUID()
 
-		err = cr.session.Query(cql, id, msg.Channel, msg.Created, msg.Subtopic, msg.Publisher, string(pld)).Exec()
+		err = cr.session.Query(cql, id, msg.Channel, msg.Created, msg.Subtopic, msg.Publisher, msg.Protocol, string(pld)).Exec()
 		if err != nil {
 			if err.Error() == fmt.Sprintf("unconfigured table %s", msgs.Format) {
 				return errNoTable
