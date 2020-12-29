@@ -4,6 +4,7 @@
 package postgres
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -37,14 +38,17 @@ func New(db *sqlx.DB) readers.MessageRepository {
 
 func (tr postgresRepository) ReadAll(chanID string, offset, limit uint64, query map[string]string) (readers.MessagesPage, error) {
 	table, ok := query[format]
+	order := "created"
 	if !ok {
 		table = defTable
+		order = "time"
 	}
 	// Remove format filter and format the rest properly.
 	delete(query, format)
 	q := fmt.Sprintf(`SELECT * FROM %s
-    WHERE %s ORDER BY time DESC
-    LIMIT :limit OFFSET :offset;`, table, fmtCondition(chanID, query))
+    WHERE %s ORDER BY %s DESC
+	LIMIT :limit OFFSET :offset;`, table, fmtCondition(chanID, query), order)
+	fmt.Println("QUERY", q)
 
 	params := map[string]interface{}{
 		"channel":   chanID,
@@ -79,12 +83,16 @@ func (tr postgresRepository) ReadAll(chanID string, offset, limit uint64, query 
 		}
 	default:
 		for rows.Next() {
-			msg := map[string]interface{}{}
+			msg := jsonMessage{}
 			if err := rows.StructScan(&msg); err != nil {
 				return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
 			}
-
-			page.Messages = append(page.Messages, parseFlat(msg))
+			m, err := msg.toMap()
+			if err != nil {
+				return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
+			}
+			m["payload"] = parseFlat(m["payload"])
+			page.Messages = append(page.Messages, parseFlat(m))
 		}
 
 	}
@@ -152,4 +160,32 @@ func parseFlat(flat interface{}) interface{} {
 type dbMessage struct {
 	ID string `db:"id"`
 	senml.Message
+}
+
+type jsonMessage struct {
+	ID        string `db:"id"`
+	Channel   string `db:"channel"`
+	Created   int64  `db:"created"`
+	Subtopic  string `db:"subtopic"`
+	Publisher string `db:"publisher"`
+	Protocol  string `db:"protocol"`
+	Payload   []byte `db:"payload"`
+}
+
+func (msg jsonMessage) toMap() (map[string]interface{}, error) {
+	ret := map[string]interface{}{
+		"id":        msg.ID,
+		"channel":   msg.Channel,
+		"created":   msg.Created,
+		"subtopic":  msg.Subtopic,
+		"publisher": msg.Publisher,
+		"protocol":  msg.Protocol,
+		"payload":   map[string]interface{}{},
+	}
+	pld := make(map[string]interface{})
+	if err := json.Unmarshal(msg.Payload, &pld); err != nil {
+		return nil, err
+	}
+	ret["payload"] = pld
+	return ret, nil
 }
