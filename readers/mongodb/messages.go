@@ -36,16 +36,16 @@ func New(db *mongo.Database) readers.MessageRepository {
 }
 
 func (repo mongoRepository) ReadAll(chanID string, offset, limit uint64, query map[string]string) (readers.MessagesPage, error) {
-	format, ok := query[format]
+	collection, ok := query[format]
 	if !ok {
-		format = defCollection
+		collection = defCollection
 	}
-	col := repo.db.Collection(format)
+	col := repo.db.Collection(collection)
+	delete(query, format)
 	sortMap := map[string]interface{}{
 		"time": -1,
 	}
 	// Remove format filter and format the rest properly.
-	delete(query, format)
 	filter := fmtCondition(chanID, query)
 	cursor, err := col.Find(context.Background(), filter, options.Find().SetSort(sortMap).SetLimit(int64(limit)).SetSkip(int64(offset)))
 	if err != nil {
@@ -54,8 +54,7 @@ func (repo mongoRepository) ReadAll(chanID string, offset, limit uint64, query m
 	defer cursor.Close(context.Background())
 
 	messages := []interface{}{}
-	// var m interface{}
-	switch format {
+	switch collection {
 	case defCollection:
 		for cursor.Next(context.Background()) {
 			var m senml.Message

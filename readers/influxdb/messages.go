@@ -17,8 +17,8 @@ import (
 
 const (
 	countCol       = "count"
+	format         = "format"
 	defMeasurement = "messages"
-	measurement    = "format"
 )
 
 var errReadMessages = errors.New("failed to read messages from influxdb database")
@@ -39,15 +39,15 @@ func New(client influxdata.Client, database string) readers.MessageRepository {
 }
 
 func (repo *influxRepository) ReadAll(chanID string, offset, limit uint64, query map[string]string) (readers.MessagesPage, error) {
-	format, ok := query[measurement]
+	measurement, ok := query[format]
 	if !ok {
-		format = defMeasurement
+		measurement = defMeasurement
 	}
 	// Remove format filter and format the rest properly.
 	delete(query, format)
 	condition := fmtCondition(chanID, query)
 
-	cmd := fmt.Sprintf(`SELECT * FROM %s WHERE %s ORDER BY time DESC LIMIT %d OFFSET %d`, format, condition, limit, offset)
+	cmd := fmt.Sprintf(`SELECT * FROM %s WHERE %s ORDER BY time DESC LIMIT %d OFFSET %d`, measurement, condition, limit, offset)
 	q := influxdata.Query{
 		Command:  cmd,
 		Database: repo.database,
@@ -69,7 +69,7 @@ func (repo *influxRepository) ReadAll(chanID string, offset, limit uint64, query
 
 	result := resp.Results[0].Series[0]
 	for _, v := range result.Values {
-		ret = append(ret, parseMessage(format, result.Columns, v))
+		ret = append(ret, parseMessage(measurement, result.Columns, v))
 	}
 
 	total, err := repo.count(condition)
@@ -213,8 +213,8 @@ func parseValues(value interface{}, name string, msg *senml.Message) {
 	}
 }
 
-func parseMessage(format string, names []string, fields []interface{}) interface{} {
-	switch format {
+func parseMessage(measurement string, names []string, fields []interface{}) interface{} {
+	switch measurement {
 	case defMeasurement:
 		return parseSenml(names, fields)
 	default:

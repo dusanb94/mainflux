@@ -36,15 +36,15 @@ func New(db *sqlx.DB) readers.MessageRepository {
 }
 
 func (tr postgresRepository) ReadAll(chanID string, offset, limit uint64, query map[string]string) (readers.MessagesPage, error) {
-	format, ok := query[format]
+	table, ok := query[format]
 	if !ok {
-		format = defTable
+		table = defTable
 	}
 	// Remove format filter and format the rest properly.
 	delete(query, format)
 	q := fmt.Sprintf(`SELECT * FROM %s
     WHERE %s ORDER BY time DESC
-    LIMIT :limit OFFSET :offset;`, format, fmtCondition(chanID, query))
+    LIMIT :limit OFFSET :offset;`, table, fmtCondition(chanID, query))
 
 	params := map[string]interface{}{
 		"channel":   chanID,
@@ -67,7 +67,7 @@ func (tr postgresRepository) ReadAll(chanID string, offset, limit uint64, query 
 		Limit:    limit,
 		Messages: []interface{}{},
 	}
-	switch format {
+	switch table {
 	case defTable:
 		for rows.Next() {
 			msg := dbMessage{Message: senml.Message{Channel: chanID}}
@@ -87,14 +87,6 @@ func (tr postgresRepository) ReadAll(chanID string, offset, limit uint64, query 
 			page.Messages = append(page.Messages, parseFlat(msg))
 		}
 
-	}
-	for rows.Next() {
-		msg := dbMessage{Message: senml.Message{Channel: chanID}}
-		if err := rows.StructScan(&msg); err != nil {
-			return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
-		}
-
-		page.Messages = append(page.Messages, msg.Message)
 	}
 
 	q = `SELECT COUNT(*) FROM messages WHERE channel = $1;`
