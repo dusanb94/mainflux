@@ -6,10 +6,10 @@ package postgres
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/jmoiron/sqlx" // required for DB access
 	"github.com/mainflux/mainflux/pkg/errors"
+	jsont "github.com/mainflux/mainflux/pkg/transformers/json"
 	"github.com/mainflux/mainflux/pkg/transformers/senml"
 	"github.com/mainflux/mainflux/readers"
 )
@@ -48,7 +48,6 @@ func (tr postgresRepository) ReadAll(chanID string, offset, limit uint64, query 
 	q := fmt.Sprintf(`SELECT * FROM %s
     WHERE %s ORDER BY %s DESC
 	LIMIT :limit OFFSET :offset;`, table, fmtCondition(chanID, query), order)
-	fmt.Println("QUERY", q)
 
 	params := map[string]interface{}{
 		"channel":   chanID,
@@ -91,8 +90,8 @@ func (tr postgresRepository) ReadAll(chanID string, offset, limit uint64, query 
 			if err != nil {
 				return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
 			}
-			m["payload"] = parseFlat(m["payload"])
-			page.Messages = append(page.Messages, parseFlat(m))
+			m["payload"] = jsont.ParseFlat(m["payload"])
+			page.Messages = append(page.Messages, m)
 		}
 
 	}
@@ -125,36 +124,6 @@ func fmtCondition(chanID string, query map[string]string) string {
 		}
 	}
 	return condition
-}
-
-func parseFlat(flat interface{}) interface{} {
-	msg := make(map[string]interface{})
-	switch v := flat.(type) {
-	case map[string]interface{}:
-		for key, value := range v {
-			if value == nil {
-				continue
-			}
-			keys := strings.Split(key, "/")
-			n := len(keys)
-			if n == 1 {
-				msg[key] = value
-				continue
-			}
-			current := msg
-			for i, k := range keys {
-				if _, ok := current[k]; !ok {
-					current[k] = make(map[string]interface{})
-				}
-				if i == n-1 {
-					current[k] = value
-					break
-				}
-				current = current[k].(map[string]interface{})
-			}
-		}
-	}
-	return msg
 }
 
 type dbMessage struct {

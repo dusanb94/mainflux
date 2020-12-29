@@ -12,6 +12,7 @@ import (
 	"github.com/mainflux/mainflux/readers"
 
 	influxdata "github.com/influxdata/influxdb/client/v2"
+	jsont "github.com/mainflux/mainflux/pkg/transformers/json"
 	"github.com/mainflux/mainflux/pkg/transformers/senml"
 )
 
@@ -264,35 +265,5 @@ func parseJSON(names []string, fields []interface{}) interface{} {
 		ret[n] = fields[i]
 	}
 
-	return parseFlat(ret)
-}
-
-func parseFlat(flat interface{}) interface{} {
-	msg := make(map[string]interface{})
-	switch v := flat.(type) {
-	case map[string]interface{}:
-		for key, value := range v {
-			if value == nil {
-				continue
-			}
-			keys := strings.Split(key, "/")
-			n := len(keys)
-			if n == 1 {
-				msg[key] = value
-				continue
-			}
-			current := msg
-			for i, k := range keys {
-				if _, ok := current[k]; !ok {
-					current[k] = make(map[string]interface{})
-				}
-				if i == n-1 {
-					current[k] = value
-					break
-				}
-				current = current[k].(map[string]interface{})
-			}
-		}
-	}
-	return msg
+	return jsont.ParseFlat(ret)
 }

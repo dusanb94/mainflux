@@ -6,10 +6,10 @@ package cassandra
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/gocql/gocql"
 	"github.com/mainflux/mainflux/pkg/errors"
+	jsont "github.com/mainflux/mainflux/pkg/transformers/json"
 	"github.com/mainflux/mainflux/pkg/transformers/senml"
 	"github.com/mainflux/mainflux/readers"
 )
@@ -93,7 +93,7 @@ func (cr cassandraRepository) ReadAll(chanID string, offset, limit uint64, query
 			if err != nil {
 				return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
 			}
-			m["payload"] = parseFlat(m["payload"])
+			m["payload"] = jsont.ParseFlat(m["payload"])
 			page.Messages = append(page.Messages, m)
 		}
 	}
@@ -147,36 +147,6 @@ func buildCountQuery(format, chanID string, names []string) string {
 	}
 
 	return fmt.Sprintf(cql, condCQL)
-}
-
-func parseFlat(flat interface{}) interface{} {
-	msg := make(map[string]interface{})
-	switch v := flat.(type) {
-	case map[string]interface{}:
-		for key, value := range v {
-			if value == nil {
-				continue
-			}
-			keys := strings.Split(key, "/")
-			n := len(keys)
-			if n == 1 {
-				msg[key] = value
-				continue
-			}
-			current := msg
-			for i, k := range keys {
-				if _, ok := current[k]; !ok {
-					current[k] = make(map[string]interface{})
-				}
-				if i == n-1 {
-					current[k] = value
-					break
-				}
-				current = current[k].(map[string]interface{})
-			}
-		}
-	}
-	return msg
 }
 
 type jsonMessage struct {

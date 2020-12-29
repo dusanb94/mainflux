@@ -5,9 +5,9 @@ package mongodb
 
 import (
 	"context"
-	"strings"
 
 	"github.com/mainflux/mainflux/pkg/errors"
+	jsont "github.com/mainflux/mainflux/pkg/transformers/json"
 	"github.com/mainflux/mainflux/pkg/transformers/senml"
 	"github.com/mainflux/mainflux/readers"
 	"go.mongodb.org/mongo-driver/bson"
@@ -70,7 +70,7 @@ func (repo mongoRepository) ReadAll(chanID string, offset, limit uint64, query m
 			if err := cursor.Decode(&m); err != nil {
 				return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
 			}
-			m["payload"] = parseFlat(m["payload"])
+			m["payload"] = jsont.ParseFlat(m["payload"])
 
 			messages = append(messages, m)
 		}
@@ -112,34 +112,4 @@ func fmtCondition(chanID string, query map[string]string) *bson.D {
 	}
 
 	return &filter
-}
-
-func parseFlat(flat interface{}) interface{} {
-	msg := make(map[string]interface{})
-	switch v := flat.(type) {
-	case map[string]interface{}:
-		for key, value := range v {
-			if value == nil {
-				continue
-			}
-			keys := strings.Split(key, "/")
-			n := len(keys)
-			if n == 1 {
-				msg[key] = value
-				continue
-			}
-			current := msg
-			for i, k := range keys {
-				if _, ok := current[k]; !ok {
-					current[k] = make(map[string]interface{})
-				}
-				if i == n-1 {
-					current[k] = value
-					break
-				}
-				current = current[k].(map[string]interface{})
-			}
-		}
-	}
-	return msg
 }
