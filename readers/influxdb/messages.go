@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	countCol       = "count"
+	countCol       = "count_protocol"
 	format         = "format"
 	defMeasurement = "messages"
 )
@@ -73,7 +73,7 @@ func (repo *influxRepository) ReadAll(chanID string, offset, limit uint64, query
 		ret = append(ret, parseMessage(measurement, result.Columns, v))
 	}
 
-	total, err := repo.count(condition)
+	total, err := repo.count(measurement, condition)
 	if err != nil {
 		return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
 	}
@@ -86,8 +86,8 @@ func (repo *influxRepository) ReadAll(chanID string, offset, limit uint64, query
 	}, nil
 }
 
-func (repo *influxRepository) count(condition string) (uint64, error) {
-	cmd := fmt.Sprintf(`SELECT COUNT(protocol) FROM messages WHERE %s`, condition)
+func (repo *influxRepository) count(measurement, condition string) (uint64, error) {
+	cmd := fmt.Sprintf(`SELECT COUNT(*) FROM %s WHERE %s`, measurement, condition)
 	q := influxdata.Query{
 		Command:  cmd,
 		Database: repo.database,

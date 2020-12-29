@@ -96,11 +96,11 @@ func (tr postgresRepository) ReadAll(chanID string, offset, limit uint64, query 
 
 	}
 
-	q = `SELECT COUNT(*) FROM messages WHERE channel = $1;`
+	q = fmt.Sprintf(`SELECT COUNT(*) FROM %s WHERE channel = $1;`, table)
 	qParams := []interface{}{chanID}
 
 	if query["subtopic"] != "" {
-		q = `SELECT COUNT(*) FROM messages WHERE channel = $1 AND subtopic = $2;`
+		q = fmt.Sprintf(`SELECT COUNT(*) FROM %s WHERE channel = $1 AND subtopic = $2;`, table)
 		qParams = append(qParams, query["subtopic"])
 	}
 
