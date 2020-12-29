@@ -17,10 +17,8 @@ const sep = "/"
 var keys = [...]string{"publisher", "protocol", "channel", "subtopic"}
 
 var (
-
 	// ErrTransform reprents an error during parsing message.
-	ErrTransform = errors.New("unable to parse JSON object")
-
+	ErrTransform         = errors.New("unable to parse JSON object")
 	errInvalidKey        = errors.New("invalid object key")
 	errUnknownFormat     = errors.New("unknown format of JSON message")
 	errInvalidFormat     = errors.New("invalid JSON object")
