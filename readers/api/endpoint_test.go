@@ -35,7 +35,7 @@ var (
 )
 
 func newService() readers.MessageRepository {
-	var messages []interface{}
+	var messages []readers.Message
 	for i := 0; i < numOfMessages; i++ {
 		msg := senml.Message{
 			Channel:   chanID,
@@ -61,7 +61,7 @@ func newService() readers.MessageRepository {
 		messages = append(messages, msg)
 	}
 
-	return mocks.NewMessageRepository(map[string][]interface{}{
+	return mocks.NewMessageRepository(map[string][]readers.Message{
 		chanID: messages,
 	})
 }

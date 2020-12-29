@@ -13,11 +13,11 @@ var _ readers.MessageRepository = (*messageRepositoryMock)(nil)
 
 type messageRepositoryMock struct {
 	mutex    sync.Mutex
-	messages map[string][]interface{}
+	messages map[string][]readers.Message
 }
 
 // NewMessageRepository returns mock implementation of message repository.
-func NewMessageRepository(messages map[string][]interface{}) readers.MessageRepository {
+func NewMessageRepository(messages map[string][]readers.Message) readers.MessageRepository {
 	return &messageRepositoryMock{
 		mutex:    sync.Mutex{},
 		messages: messages,

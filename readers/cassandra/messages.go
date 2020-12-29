@@ -68,7 +68,7 @@ func (cr cassandraRepository) ReadAll(chanID string, offset, limit uint64, query
 	page := readers.MessagesPage{
 		Offset:   offset,
 		Limit:    limit,
-		Messages: []interface{}{},
+		Messages: []readers.Message{},
 	}
 
 	switch table {

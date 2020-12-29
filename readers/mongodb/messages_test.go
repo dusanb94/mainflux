@@ -112,7 +112,7 @@ func TestReadSenml(t *testing.T) {
 				Total:    0,
 				Offset:   0,
 				Limit:    10,
-				Messages: []interface{}{},
+				Messages: []readers.Message{},
 			},
 		},
 		"read message last page": {
@@ -135,7 +135,7 @@ func TestReadSenml(t *testing.T) {
 				Total:    0,
 				Offset:   0,
 				Limit:    msgsNum,
-				Messages: []interface{}{},
+				Messages: []readers.Message{},
 			},
 		},
 		"read message with subtopic": {
@@ -161,8 +161,8 @@ func TestReadSenml(t *testing.T) {
 	}
 }
 
-func fromSenml(in []senml.Message) []interface{} {
-	var ret []interface{}
+func fromSenml(in []senml.Message) []readers.Message {
+	var ret []readers.Message
 	for _, m := range in {
 		ret = append(ret, m)
 	}

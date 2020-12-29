@@ -55,7 +55,7 @@ func (repo *influxRepository) ReadAll(chanID string, offset, limit uint64, query
 		Database: repo.database,
 	}
 
-	var ret []interface{}
+	var ret []readers.Message
 
 	resp, err := repo.client.Query(q)
 	if err != nil {
