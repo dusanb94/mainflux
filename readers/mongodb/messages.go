@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	format        = "format"
+	format = "format"
+	// Collection for SenML messages
 	defCollection = "messages"
 )
 

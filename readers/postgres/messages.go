@@ -17,7 +17,8 @@ import (
 const errInvalid = "invalid_text_representation"
 
 const (
-	format   = "format"
+	format = "format"
+	// Table for SenML messages
 	defTable = "messages"
 )
 

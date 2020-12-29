@@ -17,8 +17,9 @@ import (
 var errReadMessages = errors.New("failed to read messages from cassandra database")
 
 const (
-	format      = "format"
-	defKeyspace = "messages"
+	format = "format"
+	// Table for SenML messages
+	defTable = "messages"
 )
 
 var _ readers.MessageRepository = (*cassandraRepository)(nil)
@@ -35,9 +36,9 @@ func New(session *gocql.Session) readers.MessageRepository {
 }
 
 func (cr cassandraRepository) ReadAll(chanID string, offset, limit uint64, query map[string]string) (readers.MessagesPage, error) {
-	keyspace, ok := query[format]
+	table, ok := query[format]
 	if !ok {
-		keyspace = defKeyspace
+		table = defTable
 	}
 	// Remove format filter and format the rest properly.
 	delete(query, format)
@@ -50,8 +51,8 @@ func (cr cassandraRepository) ReadAll(chanID string, offset, limit uint64, query
 	}
 	vals = append(vals, offset+limit)
 
-	selectCQL := buildSelectQuery(keyspace, chanID, offset, limit, names)
-	countCQL := buildCountQuery(keyspace, chanID, names)
+	selectCQL := buildSelectQuery(table, chanID, offset, limit, names)
+	countCQL := buildCountQuery(table, chanID, names)
 
 	iter := cr.session.Query(selectCQL, vals...).Iter()
 	defer iter.Close()
@@ -70,8 +71,8 @@ func (cr cassandraRepository) ReadAll(chanID string, offset, limit uint64, query
 		Messages: []interface{}{},
 	}
 
-	switch keyspace {
-	case defKeyspace:
+	switch table {
+	case defTable:
 		for scanner.Next() {
 			var msg senml.Message
 			err := scanner.Scan(&msg.Channel, &msg.Subtopic, &msg.Publisher, &msg.Protocol,
@@ -105,15 +106,15 @@ func (cr cassandraRepository) ReadAll(chanID string, offset, limit uint64, query
 	return page, nil
 }
 
-func buildSelectQuery(keyspace, chanID string, offset, limit uint64, names []string) string {
+func buildSelectQuery(table, chanID string, offset, limit uint64, names []string) string {
 	var condCQL string
 	cql := `SELECT channel, subtopic, publisher, protocol, name, unit,
 	        value, string_value, bool_value, data_value, sum, time,
 			update_time FROM messages WHERE channel = ? %s LIMIT ?
 			ALLOW FILTERING`
-	if keyspace != defKeyspace {
+	if table != defTable {
 		cql = fmt.Sprintf(`SELECT channel, subtopic, publisher, protocol, created, payload FROM %s WHERE channel = ? %s LIMIT ?
-			ALLOW FILTERING`, keyspace, "%s")
+			ALLOW FILTERING`, table, "%s")
 	}
 	for _, name := range names {
 		switch name {
@@ -130,9 +131,9 @@ func buildSelectQuery(keyspace, chanID string, offset, limit uint64, names []str
 	return fmt.Sprintf(cql, condCQL)
 }
 
-func buildCountQuery(format, chanID string, names []string) string {
+func buildCountQuery(table, chanID string, names []string) string {
 	var condCQL string
-	cql := fmt.Sprintf(`SELECT COUNT(*) FROM %s WHERE channel = ? %s ALLOW FILTERING`, format, "%s")
+	cql := fmt.Sprintf(`SELECT COUNT(*) FROM %s WHERE channel = ? %s ALLOW FILTERING`, table, "%s")
 
 	for _, name := range names {
 		switch name {

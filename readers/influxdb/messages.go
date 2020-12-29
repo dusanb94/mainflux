@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	countCol       = "count_protocol"
-	format         = "format"
+	countCol = "count_protocol"
+	format   = "format"
+	// Measurement for SenML messages
 	defMeasurement = "messages"
 )
 
