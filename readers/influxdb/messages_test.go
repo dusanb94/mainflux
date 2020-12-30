@@ -22,7 +22,6 @@ const (
 	chanID     = "1"
 	subtopic   = "topic"
 	msgsNum    = 100
-	fromToNum  = 4
 	msgsValNum = 20
 	limit      = 10
 )
@@ -65,12 +64,12 @@ func TestReadAll(t *testing.T) {
 	boolMsgs := []senml.Message{}
 	stringMsgs := []senml.Message{}
 	dataMsgs := []senml.Message{}
+	now := float64(time.Now().UTC().Second())
 
-	now := time.Now().UnixNano()
 	for i := 0; i < msgsNum; i++ {
 		// Mix possible values as well as value sum.
 		msg := m
-		msg.Time = float64(now)/1e9 - float64(i)
+		msg.Time = now - float64(i)
 
 		count := i % valueFields
 		switch count {
@@ -217,14 +216,14 @@ func TestReadAll(t *testing.T) {
 			offset: 0,
 			limit:  limit,
 			query: map[string]string{
-				"from": fmt.Sprintf("%f", messages[fromToNum].Time),
+				"from": fmt.Sprintf("%f", messages[5].Time),
 				"to":   fmt.Sprintf("%f", messages[0].Time),
 			},
 			page: readers.MessagesPage{
-				Total:    fromToNum,
+				Total:    5,
 				Offset:   0,
 				Limit:    limit,
-				Messages: fromSenml(messages[1:5]),
+				Messages: fromSenml(messages[1:6]),
 			},
 		},
 	}
