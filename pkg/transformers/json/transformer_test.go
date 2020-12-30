@@ -38,7 +38,7 @@ func TestTransformJSON(t *testing.T) {
 	listMsg.Payload = []byte(listPayload)
 
 	jsonMsg := json.Messages{
-		Messages: []json.Message{
+		Data: []json.Message{
 			{
 				Channel:   msg.Channel,
 				Subtopic:  msg.Subtopic,
@@ -57,7 +57,7 @@ func TestTransformJSON(t *testing.T) {
 	}
 
 	listJSON := json.Messages{
-		Messages: []json.Message{
+		Data: []json.Message{
 			{
 				Channel:   msg.Channel,
 				Subtopic:  msg.Subtopic,

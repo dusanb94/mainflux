@@ -66,7 +66,7 @@ func (repo *mongoRepo) saveSenml(messages interface{}) error {
 
 func (repo *mongoRepo) saveJSON(msgs json.Messages) error {
 	m := []interface{}{}
-	for _, msg := range msgs.Messages {
+	for _, msg := range msgs.Data {
 		m = append(m, msg)
 	}
 

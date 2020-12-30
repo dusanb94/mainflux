@@ -18,6 +18,6 @@ type Message struct {
 
 // Messages represents a list of JSON messages.
 type Messages struct {
-	Messages []Message
-	Format   string
+	Data   []Message
+	Format string
 }

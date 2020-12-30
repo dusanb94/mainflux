@@ -138,7 +138,7 @@ func (pr postgresRepo) insertJSON(msgs mfjson.Messages) error {
           VALUES (:id, :channel, :created, :subtopic, :publisher, :protocol, :payload);`
 	q = fmt.Sprintf(q, msgs.Format)
 
-	for _, m := range msgs.Messages {
+	for _, m := range msgs.Data {
 		var dbmsg jsonMessage
 		dbmsg, err = toJSONMessage(m)
 		if err != nil {

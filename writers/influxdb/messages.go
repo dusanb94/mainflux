@@ -85,7 +85,7 @@ func (repo *influxRepo) senmlPoints(pts influxdata.BatchPoints, messages interfa
 }
 
 func (repo *influxRepo) jsonPoints(pts influxdata.BatchPoints, msgs json.Messages) (influxdata.BatchPoints, error) {
-	for i, m := range msgs.Messages {
+	for i, m := range msgs.Data {
 		t := time.Unix(0, m.Created+int64(i))
 
 		// Copy first-level fields so that the original Payload is unchanged.

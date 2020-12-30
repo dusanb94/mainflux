@@ -75,7 +75,7 @@ func (cr *cassandraRepository) saveJSON(msgs mfjson.Messages) error {
 }
 
 func (cr *cassandraRepository) insertJSON(msgs mfjson.Messages) error {
-	for _, msg := range msgs.Messages {
+	for _, msg := range msgs.Data {
 		pld, err := json.Marshal(msg.Payload)
 		if err != nil {
 			return err
