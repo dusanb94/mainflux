@@ -96,7 +96,7 @@ func TestReadAll(t *testing.T) {
 		messages = append(messages, msg)
 	}
 
-	err = writer.Save(messages)
+	err = writer.Consume(messages)
 	require.Nil(t, err, fmt.Sprintf("failed to store message to InfluxDB: %s", err))
 
 	reader := ireader.New(client, testDB)

@@ -36,7 +36,7 @@ var (
 )
 
 func TestReadSenml(t *testing.T) {
-	messageRepo := pwriter.New(db)
+	writer := pwriter.New(db)
 
 	chanID, err := uuidProvider.New().ID()
 	require.Nil(t, err, fmt.Sprintf("got unexpected error: %s", err))
@@ -92,7 +92,7 @@ func TestReadSenml(t *testing.T) {
 		messages = append(messages, msg)
 	}
 
-	err = messageRepo.Save(messages)
+	err = writer.Consume(messages)
 	assert.Nil(t, err, fmt.Sprintf("expected no error got %s\n", err))
 
 	reader := preader.New(db)
