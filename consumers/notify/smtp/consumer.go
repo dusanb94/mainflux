@@ -5,6 +5,7 @@ package smtp
 
 import (
 	"github.com/mainflux/mainflux/consumers"
+	"github.com/mainflux/mainflux/consumers/notify"
 	"github.com/mainflux/mainflux/internal/email"
 	"github.com/mainflux/mainflux/pkg/errors"
 )
@@ -17,6 +18,7 @@ var _ consumers.Consumer = (*emailer)(nil)
 
 type emailer struct {
 	agent *email.Agent
+	repo  notify.SubscriptionRepository
 }
 
 // New instantiates Cassandra message repository.
