@@ -16,15 +16,15 @@ import (
 var _ consumers.Consumer = (*loggingMiddleware)(nil)
 
 type loggingMiddleware struct {
-	logger log.Logger
-	c      consumers.Consumer
+	logger   log.Logger
+	consumer consumers.Consumer
 }
 
 // LoggingMiddleware adds logging facilities to the adapter.
-func LoggingMiddleware(c consumers.Consumer, logger log.Logger) consumers.Consumer {
+func LoggingMiddleware(consumer consumers.Consumer, logger log.Logger) consumers.Consumer {
 	return &loggingMiddleware{
-		logger: logger,
-		c:      c,
+		logger:   logger,
+		consumer: consumer,
 	}
 }
 
@@ -38,5 +38,5 @@ func (lm *loggingMiddleware) Consume(msgs interface{}) (err error) {
 		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
 	}(time.Now())
 
-	return lm.c.Consume(msgs)
+	return lm.consumer.Consume(msgs)
 }

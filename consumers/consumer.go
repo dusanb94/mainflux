@@ -3,9 +3,9 @@
 
 package consumers
 
-// Consumer specifies message writing API.
+// Consumer specifies message consuming API.
 type Consumer interface {
-	// MessageConsumer method is used to save published message. A non-nil
-	// error is returned to indicate  operation failure.
+	// Consume method is used to consumed received messages.
+	// A non-nil error is returned to indicate  operation failure.
 	Consume(messages interface{}) error
 }

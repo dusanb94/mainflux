@@ -13,18 +13,18 @@ import (
 var _ consumers.Consumer = (*metricsMiddleware)(nil)
 
 type metricsMiddleware struct {
-	counter metrics.Counter
-	latency metrics.Histogram
-	c       consumers.Consumer
+	counter  metrics.Counter
+	latency  metrics.Histogram
+	consumer consumers.Consumer
 }
 
 // MetricsMiddleware returns new message repository
 // with Save method wrapped to expose metrics.
-func MetricsMiddleware(c consumers.Consumer, counter metrics.Counter, latency metrics.Histogram) consumers.Consumer {
+func MetricsMiddleware(consumer consumers.Consumer, counter metrics.Counter, latency metrics.Histogram) consumers.Consumer {
 	return &metricsMiddleware{
-		counter: counter,
-		latency: latency,
-		c:       c,
+		counter:  counter,
+		latency:  latency,
+		consumer: consumer,
 	}
 }
 
@@ -33,5 +33,5 @@ func (mm *metricsMiddleware) Consume(msgs interface{}) error {
 		mm.counter.With("method", "consume").Add(1)
 		mm.latency.With("method", "consume").Observe(time.Since(begin).Seconds())
 	}(time.Now())
-	return mm.c.Consume(msgs)
+	return mm.consumer.Consume(msgs)
 }
