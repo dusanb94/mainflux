@@ -138,7 +138,7 @@ func connectToDB(dbConfig postgres.Config, logger logger.Logger) *sqlx.DB {
 	return db
 }
 
-func newService(db *sqlx.DB, logger logger.Logger) consumers.MessageConsumer {
+func newService(db *sqlx.DB, logger logger.Logger) consumers.Consumer {
 	svc := postgres.New(db)
 	svc = api.LoggingMiddleware(svc, logger)
 	svc = api.MetricsMiddleware(

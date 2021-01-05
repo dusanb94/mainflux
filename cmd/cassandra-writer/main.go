@@ -134,7 +134,7 @@ func connectToCassandra(dbCfg cassandra.DBConfig, logger logger.Logger) *gocql.S
 	return session
 }
 
-func newService(session *gocql.Session, logger logger.Logger) consumers.MessageConsumer {
+func newService(session *gocql.Session, logger logger.Logger) consumers.Consumer {
 	repo := cassandra.New(session)
 	repo = api.LoggingMiddleware(repo, logger)
 	repo = api.MetricsMiddleware(

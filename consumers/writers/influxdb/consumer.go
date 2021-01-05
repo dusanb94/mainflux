@@ -24,7 +24,7 @@ var (
 	errSaveMessage   = errors.New("failed to save message to influxdb database")
 	errMessageFormat = errors.New("invalid message format")
 )
-var _ consumers.MessageConsumer = (*influxRepo)(nil)
+var _ consumers.Consumer = (*influxRepo)(nil)
 
 type influxRepo struct {
 	client influxdata.Client
@@ -32,7 +32,7 @@ type influxRepo struct {
 }
 
 // New returns new InfluxDB writer.
-func New(client influxdata.Client, database string) consumers.MessageConsumer {
+func New(client influxdata.Client, database string) consumers.Consumer {
 	return &influxRepo{
 		client: client,
 		cfg: influxdata.BatchPointsConfig{

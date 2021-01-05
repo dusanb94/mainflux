@@ -10,17 +10,17 @@ import (
 	"github.com/mainflux/mainflux/consumers"
 )
 
-var _ consumers.MessageConsumer = (*metricsMiddleware)(nil)
+var _ consumers.Consumer = (*metricsMiddleware)(nil)
 
 type metricsMiddleware struct {
 	counter metrics.Counter
 	latency metrics.Histogram
-	c       consumers.MessageConsumer
+	c       consumers.Consumer
 }
 
 // MetricsMiddleware returns new message repository
 // with Save method wrapped to expose metrics.
-func MetricsMiddleware(c consumers.MessageConsumer, counter metrics.Counter, latency metrics.Histogram) consumers.MessageConsumer {
+func MetricsMiddleware(c consumers.Consumer, counter metrics.Counter, latency metrics.Histogram) consumers.Consumer {
 	return &metricsMiddleware{
 		counter: counter,
 		latency: latency,

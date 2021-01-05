@@ -24,14 +24,14 @@ var (
 	errMessageFormat = errors.New("invalid message format")
 )
 
-var _ consumers.MessageConsumer = (*mongoRepo)(nil)
+var _ consumers.Consumer = (*mongoRepo)(nil)
 
 type mongoRepo struct {
 	db *mongo.Database
 }
 
 // New returns new MongoDB writer.
-func New(db *mongo.Database) consumers.MessageConsumer {
+func New(db *mongo.Database) consumers.Consumer {
 	return &mongoRepo{db}
 }
 

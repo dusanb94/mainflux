@@ -18,14 +18,14 @@ var (
 	errSaveMessage = errors.New("failed to save message to cassandra database")
 	errNoTable     = errors.New("table does not exist")
 )
-var _ consumers.MessageConsumer = (*cassandraRepository)(nil)
+var _ consumers.Consumer = (*cassandraRepository)(nil)
 
 type cassandraRepository struct {
 	session *gocql.Session
 }
 
 // New instantiates Cassandra message repository.
-func New(session *gocql.Session) consumers.MessageConsumer {
+func New(session *gocql.Session) consumers.Consumer {
 	return &cassandraRepository{session}
 }
 

@@ -13,15 +13,15 @@ import (
 	log "github.com/mainflux/mainflux/logger"
 )
 
-var _ consumers.MessageConsumer = (*loggingMiddleware)(nil)
+var _ consumers.Consumer = (*loggingMiddleware)(nil)
 
 type loggingMiddleware struct {
 	logger log.Logger
-	c      consumers.MessageConsumer
+	c      consumers.Consumer
 }
 
 // LoggingMiddleware adds logging facilities to the adapter.
-func LoggingMiddleware(c consumers.MessageConsumer, logger log.Logger) consumers.MessageConsumer {
+func LoggingMiddleware(c consumers.Consumer, logger log.Logger) consumers.Consumer {
 	return &loggingMiddleware{
 		logger: logger,
 		c:      c,

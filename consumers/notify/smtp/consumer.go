@@ -13,14 +13,14 @@ var (
 	errSaveMessage = errors.New("failed to save message to cassandra database")
 	errNoTable     = errors.New("table does not exist")
 )
-var _ consumers.MessageConsumer = (*emailer)(nil)
+var _ consumers.Consumer = (*emailer)(nil)
 
 type emailer struct {
 	agent *email.Agent
 }
 
 // New instantiates Cassandra message repository.
-func New(agent *email.Agent) consumers.MessageConsumer {
+func New(agent *email.Agent) consumers.Consumer {
 	return &emailer{agent: agent}
 }
 
