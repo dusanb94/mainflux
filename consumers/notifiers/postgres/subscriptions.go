@@ -5,10 +5,12 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/lib/pq"
 	"github.com/mainflux/mainflux/consumers/notifiers"
 	"github.com/mainflux/mainflux/pkg/errors"
+	"github.com/mainflux/mainflux/things"
 	"github.com/mainflux/mainflux/users"
 )
 
@@ -44,7 +46,12 @@ func (repo subscriptionsRepo) Save(ctx context.Context, sub notifiers.Subscripti
 	}
 	q := `INSERT INTO subscriptions (id, owner_id, owner_email, topic) VALUES (:id, :owner_id, :owner_email, :topic) RETURNING id`
 
-	dbSub := toDBSub(sub)
+	dbSub := dbSubscription{
+		ID:         sub.ID,
+		OwnerID:    sub.OwnerID,
+		OwnerEmail: sub.OwnerEmail,
+		Topic:      sub.Topic,
+	}
 
 	if _, err := repo.db.NamedQueryContext(ctx, q, dbSub); err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code.Name() == errDuplicate {
@@ -56,15 +63,47 @@ func (repo subscriptionsRepo) Save(ctx context.Context, sub notifiers.Subscripti
 	return sub.ID, nil
 }
 
-func (subscriptionsRepo) Retrieve(ctx context.Context, ownerID, topic string) (notifiers.Subscription, error) {
-	return notifiers.Subscription{}, nil
+func (repo subscriptionsRepo) Retrieve(ctx context.Context, ownerID, topic string) (notifiers.Subscription, error) {
+	q := `SELECT id, owner_id, owner_email, topic subscriptions WHERE owner_id = $1 AND topic = $2`
+	sub := dbSubscription{}
+	if err := repo.db.QueryRowxContext(ctx, q, ownerID, topic).StructScan(&sub); err != nil {
+		if err == sql.ErrNoRows {
+			return notifiers.Subscription{}, errors.Wrap(users.ErrNotFound, err)
+
+		}
+		return notifiers.Subscription{}, errors.Wrap(errRetrieveDB, err)
+	}
+
+	return fromDBSub(sub), nil
 }
 
-func (subscriptionsRepo) RetrieveAll(ctx context.Context, topic string) ([]notifiers.Subscription, error) {
-	return []notifiers.Subscription{}, nil
+func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, topic string) ([]notifiers.Subscription, error) {
+	q := `SELECT id, owner_id, owner_email, topic subscriptions WHERE topic = $1`
+
+	rows, err := repo.db.NamedQueryContext(ctx, q, topic)
+	if err != nil {
+		return []notifiers.Subscription{}, errors.Wrap(things.ErrSelectEntity, err)
+	}
+	defer rows.Close()
+
+	ret := []notifiers.Subscription{}
+	for rows.Next() {
+		sub := dbSubscription{}
+		if err := rows.StructScan(&sub); err != nil {
+			return []notifiers.Subscription{}, errors.Wrap(things.ErrSelectEntity, err)
+		}
+		ret = append(ret, fromDBSub(sub))
+	}
+
+	return ret, nil
 }
 
-func (subscriptionsRepo) Remove(ctx context.Context, ownerID, id string) error {
+func (repo subscriptionsRepo) Remove(ctx context.Context, id string) error {
+	q := `DELETE from subscriptions WHERE id = $1`
+
+	if r := repo.db.QueryRowxContext(ctx, q, id); r.Err() != nil {
+		return errors.Wrap(things.ErrRemoveEntity, r.Err())
+	}
 	return nil
 }
 
@@ -75,8 +114,8 @@ type dbSubscription struct {
 	Topic      string `db:"topic"`
 }
 
-func toDBSub(sub notifiers.Subscription) dbSubscription {
-	return dbSubscription{
+func fromDBSub(sub dbSubscription) notifiers.Subscription {
+	return notifiers.Subscription{
 		ID:         sub.ID,
 		OwnerID:    sub.OwnerID,
 		OwnerEmail: sub.OwnerEmail,
