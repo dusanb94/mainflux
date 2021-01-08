@@ -16,22 +16,21 @@ import (
 	"time"
 
 	"github.com/mainflux/mainflux/consumers"
+	"github.com/mainflux/mainflux/consumers/notifiers"
 	"github.com/mainflux/mainflux/consumers/notifiers/tracing"
 	"github.com/mainflux/mainflux/internal/email"
 	"github.com/mainflux/mainflux/pkg/messaging/nats"
-	"github.com/mainflux/mainflux/users"
+	"github.com/mainflux/mainflux/pkg/ulid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 	"github.com/jmoiron/sqlx"
 	"github.com/mainflux/mainflux"
 	authapi "github.com/mainflux/mainflux/auth/api/grpc"
+	"github.com/mainflux/mainflux/consumers/notifiers/api"
 	"github.com/mainflux/mainflux/consumers/notifiers/postgres"
 	"github.com/mainflux/mainflux/logger"
-	"github.com/mainflux/mainflux/users/api"
 	opentracing "github.com/opentracing/opentracing-go"
-	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	jconfig "github.com/uber/jaeger-client-go/config"
 )
 
@@ -154,7 +153,7 @@ func main() {
 	svc := newService(db, dbTracer, auth, cfg, logger)
 	errs := make(chan error, 2)
 
-	if err = consumers.Start(pubSub, repo, nil, cfg.configPath, logger); err != nil {
+	if err = consumers.Start(pubSub, svc, nil, cfg.configPath, logger); err != nil {
 		logger.Error(fmt.Sprintf("Failed to create Postgres writer: %s", err))
 	}
 
@@ -279,31 +278,32 @@ func connectToAuthn(cfg config, tracer opentracing.Tracer, logger logger.Logger)
 	return authapi.NewClient(tracer, conn, cfg.authnTimeout), conn.Close
 }
 
-func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthServiceClient, c config, logger logger.Logger) users.Service {
+func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthServiceClient, c config, logger logger.Logger) notifiers.Service {
 	database := postgres.NewDatabase(db)
-	userRepo := tracing.New(postgres.New(database), tracer)
+	repo := tracing.New(postgres.New(database), tracer)
+	idp := ulid.New()
 
-	svc := users.New(userRepo, groupRepo, hasher, auth, emailer)
-	svc = api.LoggingMiddleware(svc, logger)
-	svc = api.MetricsMiddleware(
-		svc,
-		kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
-			Namespace: "users",
-			Subsystem: "api",
-			Name:      "request_count",
-			Help:      "Number of requests received.",
-		}, []string{"method"}),
-		kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
-			Namespace: "users",
-			Subsystem: "api",
-			Name:      "request_latency_microseconds",
-			Help:      "Total duration of requests in microseconds.",
-		}, []string{"method"}),
-	)
+	svc := notifiers.New(auth, repo, idp, nil)
+	// svc = api.LoggingMiddleware(svc, logger)
+	// svc = api.MetricsMiddleware(
+	// 	svc,
+	// 	kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
+	// 		Namespace: "notifier",
+	// 		Subsystem: "smtp",
+	// 		Name:      "request_count",
+	// 		Help:      "Number of requests received.",
+	// 	}, []string{"method"}),
+	// 	kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
+	// 		Namespace: "notifier",
+	// 		Subsystem: "smtp",
+	// 		Name:      "request_latency_microseconds",
+	// 		Help:      "Total duration of requests in microseconds.",
+	// 	}, []string{"method"}),
+	// )
 	return svc
 }
 
-func startHTTPServer(tracer opentracing.Tracer, svc users.Service, port string, certFile string, keyFile string, logger logger.Logger, errs chan error) {
+func startHTTPServer(tracer opentracing.Tracer, svc notifiers.Service, port string, certFile string, keyFile string, logger logger.Logger, errs chan error) {
 	p := fmt.Sprintf(":%s", port)
 	if certFile != "" || keyFile != "" {
 		logger.Info(fmt.Sprintf("Users service started using https, cert %s key %s, exposed port %s", certFile, keyFile, port))
