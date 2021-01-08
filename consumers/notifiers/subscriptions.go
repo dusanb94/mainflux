@@ -13,8 +13,8 @@ type Subscription struct {
 	Topic      string
 }
 
-// SubscriptionRepository specifies a Subscription persistence API.
-type SubscriptionRepository interface {
+// SubscriptionsRepository specifies a Subscription persistence API.
+type SubscriptionsRepository interface {
 	// Save persists a subscription. Successful operation is indicated by non-nil
 	// error response.
 	Save(ctx context.Context, sub Subscription) (string, error)

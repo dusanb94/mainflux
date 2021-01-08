@@ -24,7 +24,7 @@ var (
 	errUnmarshal        = errors.New("Failed to unmarshal metadata")
 )
 
-var _ notifiers.SubscriptionRepository = (*subscriptionsRepo)(nil)
+var _ notifiers.SubscriptionsRepository = (*subscriptionsRepo)(nil)
 
 const errDuplicate = "unique_violation"
 
@@ -32,9 +32,8 @@ type subscriptionsRepo struct {
 	db Database
 }
 
-// NewUserRepo instantiates a PostgreSQL implementation of user
-// repository.
-func NewUserRepo(db Database) notifiers.SubscriptionRepository {
+// New instantiates a PostgreSQL implementation of Subscriptions repository.
+func New(db Database) notifiers.SubscriptionsRepository {
 	return &subscriptionsRepo{
 		db: db,
 	}
