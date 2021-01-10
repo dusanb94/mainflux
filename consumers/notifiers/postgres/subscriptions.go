@@ -97,8 +97,8 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, topic string) ([]
 	return ret, nil
 }
 
-func (repo subscriptionsRepo) Remove(ctx context.Context, id string) error {
-	q := `DELETE from subscriptions WHERE id = $1`
+func (repo subscriptionsRepo) Remove(ctx context.Context, id, topic string) error {
+	q := `DELETE from subscriptions WHERE owner_id = $1 AND topic = $2`
 
 	if r := repo.db.QueryRowxContext(ctx, q, id); r.Err() != nil {
 		return errors.Wrap(things.ErrRemoveEntity, r.Err())

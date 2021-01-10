@@ -9,13 +9,13 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/mainflux/mainflux/consumers/notifiers"
 	"github.com/mainflux/mainflux/pkg/errors"
 
 	kitot "github.com/go-kit/kit/tracing/opentracing"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/go-zoo/bone"
 	"github.com/mainflux/mainflux"
-	"github.com/mainflux/mainflux/users"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -33,16 +33,10 @@ const (
 	defLimit  = 10
 )
 
-var (
-	// ErrUnsupportedContentType indicates unacceptable or lack of Content-Type
-	ErrUnsupportedContentType = errors.New("unsupported content type")
-
-	// ErrFailedDecode indicates failed to decode request body
-	ErrFailedDecode = errors.New("failed to decode request body")
-)
+var errMalformedEntity = errors.New("failed to decode request body")
 
 // MakeHandler returns a HTTP handler for API endpoints.
-func MakeHandler(svc users.Service, tracer opentracing.Tracer) http.Handler {
+func MakeHandler(svc notifiers.Service, tracer opentracing.Tracer) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 	}
@@ -50,29 +44,28 @@ func MakeHandler(svc users.Service, tracer opentracing.Tracer) http.Handler {
 	mux := bone.New()
 
 	mux.Post("/subscriptions", kithttp.NewServer(
-		kitot.TraceServer(tracer, "create_subscription")(registrationEndpoint(svc)),
+		kitot.TraceServer(tracer, "create_subscription")(createSubscriptionEndpoint(svc)),
 		decodeCreateSubscription,
 		encodeResponse,
 		opts...,
 	))
 
+	mux.Get("/subscriptions/:topic", kithttp.NewServer(
+		kitot.TraceServer(tracer, "view_subscription")(viewSubscriptionEndpint(svc)),
+		decodeSubscription,
+		encodeResponse,
+		opts...,
+	))
+
 	mux.Get("/subscriptions", kithttp.NewServer(
-		kitot.TraceServer(tracer, "list_subscriptions")(viewProfileEndpoint(svc)),
-		decodeViewProfile,
+		kitot.TraceServer(tracer, "list_subscriptions")(listSubscriptionsEndpoint(svc)),
+		decodeListSubscriptions,
 		encodeResponse,
 		opts...,
 	))
-
-	mux.Get("/subscriptions/:subID", kithttp.NewServer(
-		kitot.TraceServer(tracer, "view_subscription")(viewProfileEndpoint(svc)),
-		decodeViewProfile,
-		encodeResponse,
-		opts...,
-	))
-
-	mux.Delete("/subscriptions/:subID", kithttp.NewServer(
-		kitot.TraceServer(tracer, "delete_group")(deleteGroupEndpoint(svc)),
-		decodeGroupRequest,
+	mux.Delete("/subscriptions/:topic", kithttp.NewServer(
+		kitot.TraceServer(tracer, "delete_group")(deleteSubscriptionEndpint(svc)),
+		decodeSubscription,
 		encodeResponse,
 		opts...,
 	))
@@ -83,11 +76,38 @@ func MakeHandler(svc users.Service, tracer opentracing.Tracer) http.Handler {
 	return mux
 }
 
-func decodeViewUser(_ context.Context, r *http.Request) (interface{}, error) {
-	req := viewUserReq{
-		token:  r.Header.Get("Authorization"),
-		userID: bone.GetValue(r, "userID"),
+func decodeCreateSubscription(_ context.Context, r *http.Request) (interface{}, error) {
+	var req createSubReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, errors.Wrap(errMalformedEntity, err)
 	}
+
+	req.token = r.Header.Get("Authorization")
+	return req, nil
+}
+
+func decodeSubscription(_ context.Context, r *http.Request) (interface{}, error) {
+	req := subReq{
+		topic: bone.GetValue(r, "topic"),
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, errors.Wrap(errMalformedEntity, err)
+	}
+	req.token = r.Header.Get("Authorization")
+
+	return req, nil
+}
+
+func decodeListSubscriptions(_ context.Context, r *http.Request) (interface{}, error) {
+	req := listSubsReq{
+		token: r.Header.Get("Authorization"),
+	}
+	vals := bone.GetQuery(r, "topic")
+	if len(vals) > 0 {
+		req.topic = vals[0]
+	}
+
 	return req, nil
 }
 
@@ -112,26 +132,15 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	case errors.Error:
 		w.Header().Set("Content-Type", contentType)
 		switch {
-		case errors.Contains(errorVal, users.ErrMalformedEntity):
+		case errors.Contains(errorVal, errMalformedEntity):
 			w.WriteHeader(http.StatusBadRequest)
-		case errors.Contains(errorVal, users.ErrUnauthorizedAccess):
-			w.WriteHeader(http.StatusForbidden)
-		case errors.Contains(errorVal, users.ErrConflict):
+		case errors.Contains(errorVal, notifiers.ErrCreateEntity):
 			w.WriteHeader(http.StatusConflict)
-		case errors.Contains(errorVal, users.ErrGroupConflict):
-			w.WriteHeader(http.StatusConflict)
-		case errors.Contains(errorVal, ErrUnsupportedContentType):
-			w.WriteHeader(http.StatusUnsupportedMediaType)
-		case errors.Contains(errorVal, ErrFailedDecode):
 			w.WriteHeader(http.StatusBadRequest)
 		case errors.Contains(errorVal, io.ErrUnexpectedEOF):
 			w.WriteHeader(http.StatusBadRequest)
 		case errors.Contains(errorVal, io.EOF):
 			w.WriteHeader(http.StatusBadRequest)
-		case errors.Contains(errorVal, users.ErrUserNotFound):
-			w.WriteHeader(http.StatusBadRequest)
-		case errors.Contains(errorVal, users.ErrRecoveryToken):
-			w.WriteHeader(http.StatusNotFound)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 		}

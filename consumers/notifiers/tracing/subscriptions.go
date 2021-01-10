@@ -59,12 +59,12 @@ func (urm subRepositoryMiddleware) RetrieveAll(ctx context.Context, topic string
 	return urm.repo.RetrieveAll(ctx, topic)
 }
 
-func (urm subRepositoryMiddleware) Remove(ctx context.Context, id string) error {
+func (urm subRepositoryMiddleware) Remove(ctx context.Context, ownerID, topic string) error {
 	span := createSpan(ctx, urm.tracer, retrieveByEmailOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
-	return urm.repo.Remove(ctx, id)
+	return urm.repo.Remove(ctx, ownerID, topic)
 }
 
 func createSpan(ctx context.Context, tracer opentracing.Tracer, opName string) opentracing.Span {

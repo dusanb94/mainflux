@@ -26,6 +26,6 @@ type SubscriptionsRepository interface {
 	// by the specified user.
 	RetrieveAll(ctx context.Context, topic string) ([]Subscription, error)
 
-	// Remove removes the subscription having the provided identifier.
-	Remove(ctx context.Context, id string) error
+	// Remove removes the subscription having the provided owner ID and topic.
+	Remove(ctx context.Context, ownerID, topic string) error
 }

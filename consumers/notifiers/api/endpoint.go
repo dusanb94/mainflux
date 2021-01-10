@@ -12,7 +12,7 @@ import (
 
 func createSubscriptionEndpoint(svc notifiers.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(subReq)
+		req := request.(createSubReq)
 		if err := req.validate(); err != nil {
 			return createSubRes{}, err
 		}
@@ -21,8 +21,7 @@ func createSubscriptionEndpoint(svc notifiers.Service) endpoint.Endpoint {
 			return createSubRes{}, err
 		}
 		ucr := createSubRes{
-			ID:      id,
-			created: true,
+			ID: id,
 		}
 
 		return ucr, nil
@@ -31,15 +30,21 @@ func createSubscriptionEndpoint(svc notifiers.Service) endpoint.Endpoint {
 
 func viewSubscriptionEndpint(svc notifiers.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(viewSubReq)
+		req := request.(subReq)
 		if err := req.validate(); err != nil {
-			return viewSubResp, err
+			return viewSubRes{}, err
 		}
-		sub, err := svc.ViewSubscription(ctx, req.token, req.userID)
+		sub, err := svc.ViewSubscription(ctx, req.token, req.topic)
 		if err != nil {
-			return viewSubResp{}, err
+			return viewSubRes{}, err
 		}
-		return viewSubResp{sub}, nil
+		res := viewSubRes{
+			ID:         sub.ID,
+			OwnerID:    sub.OwnerID,
+			OwnerEmail: sub.OwnerEmail,
+			Topic:      sub.Topic,
+		}
+		return res, nil
 	}
 }
 
@@ -47,21 +52,35 @@ func listSubscriptionsEndpoint(svc notifiers.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(listSubsReq)
 		if err := req.validate(); err != nil {
-			return listSubResp, err
+			return listSubsRes{}, err
 		}
 		subs, err := svc.ListSubscriptions(ctx, req.token, req.topic)
 		if err != nil {
-			return listSubsResp{}, err
+			return listSubsRes{}, err
 		}
-		return listSubsResp{subs}, nil
+		var res listSubsRes
+		for _, sub := range subs {
+			r := viewSubRes{
+				ID:         sub.ID,
+				OwnerID:    sub.OwnerID,
+				OwnerEmail: sub.OwnerEmail,
+				Topic:      sub.Topic,
+			}
+			res.Data = append(res.Data, r)
+		}
+		return res, nil
 	}
 }
 
 func deleteSubscriptionEndpint(svc notifiers.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(deleteSubReq)
+		req := request.(subReq)
 		if err := req.validate(); err != nil {
-			return err
+			return nil, err
 		}
-		return svc.RemoveSubscription(ctx, req.token, req.id)
+		if err := svc.RemoveSubscription(ctx, req.token, req.OwnerID, req.topic); err != nil {
+			return nil, err
+		}
+		return removeSubRes{}, nil
+	}
 }

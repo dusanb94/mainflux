@@ -8,39 +8,38 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mainflux/mainflux/consumers/notifiers"
 	log "github.com/mainflux/mainflux/logger"
-	"github.com/mainflux/mainflux/users"
 )
 
-var _ users.Service = (*loggingMiddleware)(nil)
+var _ notifiers.Service = (*loggingMiddleware)(nil)
 
 type loggingMiddleware struct {
 	logger log.Logger
-	svc    users.Service
+	svc    notifiers.Service
 }
 
 // LoggingMiddleware adds logging facilities to the core service.
-func LoggingMiddleware(svc users.Service, logger log.Logger) users.Service {
+func LoggingMiddleware(svc notifiers.Service, logger log.Logger) notifiers.Service {
 	return &loggingMiddleware{logger, svc}
 }
 
-func (lm *loggingMiddleware) Register(ctx context.Context, user users.User) (uid string, err error) {
+func (lm *loggingMiddleware) CreateSubscription(ctx context.Context, token string, sub notifiers.Subscription) (id string, err error) {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method register for user %s took %s to complete", user.Email, time.Since(begin))
+		message := fmt.Sprintf("Method create_subscription with the id %s for token %s took %s to complete", id, token, time.Since(begin))
 		if err != nil {
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return
 		}
 		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
-
 	}(time.Now())
 
-	return lm.svc.Register(ctx, user)
+	return lm.svc.CreateSubscription(ctx, token, sub)
 }
 
-func (lm *loggingMiddleware) ViewUser(ctx context.Context, token, id string) (u users.User, err error) {
+func (lm *loggingMiddleware) ViewSubscription(ctx context.Context, token, topic string) (sub notifiers.Subscription, err error) {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method view_user for user %s took %s to complete", u.Email, time.Since(begin))
+		message := fmt.Sprintf("Method view_subscription with the topic %s for token %s took %s to complete", topic, token, time.Since(begin))
 		if err != nil {
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return
@@ -48,12 +47,12 @@ func (lm *loggingMiddleware) ViewUser(ctx context.Context, token, id string) (u 
 		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
 	}(time.Now())
 
-	return lm.svc.ViewUser(ctx, token, id)
+	return lm.svc.ViewSubscription(ctx, token, topic)
 }
 
-func (lm *loggingMiddleware) CreateGroup(ctx context.Context, token string, group users.Group) (u users.Group, err error) {
+func (lm *loggingMiddleware) ListSubscriptions(ctx context.Context, token, topic string) (res []notifiers.Subscription, err error) {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method create_group with name %s took %s to complete", group.Name, time.Since(begin))
+		message := fmt.Sprintf("Method list_subscription for topic %s and token %s took %s to complete", topic, token, time.Since(begin))
 		if err != nil {
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return
@@ -61,12 +60,12 @@ func (lm *loggingMiddleware) CreateGroup(ctx context.Context, token string, grou
 		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
 	}(time.Now())
 
-	return lm.svc.CreateGroup(ctx, token, group)
+	return lm.svc.ListSubscriptions(ctx, token, topic)
 }
 
-func (lm *loggingMiddleware) ListGroups(ctx context.Context, token, id string, offset, limit uint64, um users.Metadata) (e users.GroupPage, err error) {
+func (lm *loggingMiddleware) RemoveSubscription(ctx context.Context, token, ownerID, topic string) (err error) {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method list_groups for parent %s took %s to complete", id, time.Since(begin))
+		message := fmt.Sprintf("Method remove_subscription from the owner %s for token %s and topic %s took %s to complete", ownerID, token, topic, time.Since(begin))
 		if err != nil {
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return
@@ -74,12 +73,12 @@ func (lm *loggingMiddleware) ListGroups(ctx context.Context, token, id string, o
 		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
 	}(time.Now())
 
-	return lm.svc.ListGroups(ctx, token, id, offset, limit, um)
+	return lm.svc.RemoveSubscription(ctx, token, ownerID, topic)
 }
 
-func (lm *loggingMiddleware) ListMembers(ctx context.Context, token, id string, offset, limit uint64, um users.Metadata) (e users.UserPage, err error) {
+func (lm *loggingMiddleware) Consume(msg interface{}) (err error) {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method list_members for parent %s took %s to complete", id, time.Since(begin))
+		message := fmt.Sprintf("Method consume took %s to complete", time.Since(begin))
 		if err != nil {
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return
@@ -87,18 +86,5 @@ func (lm *loggingMiddleware) ListMembers(ctx context.Context, token, id string, 
 		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
 	}(time.Now())
 
-	return lm.svc.ListMembers(ctx, token, id, offset, limit, um)
-}
-
-func (lm *loggingMiddleware) RemoveGroup(ctx context.Context, token, id string) (err error) {
-	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method remove_group with id %s took %s to complete", id, time.Since(begin))
-		if err != nil {
-			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
-			return
-		}
-		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
-	}(time.Now())
-
-	return lm.svc.RemoveGroup(ctx, token, id)
+	return lm.svc.Consume(msg)
 }

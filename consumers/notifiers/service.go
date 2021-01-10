@@ -17,8 +17,8 @@ var (
 	// when accessing a protected resource.
 	ErrUnauthorizedAccess = errors.New("missing or invalid credentials provided")
 
-	// ErrCreateUUID indicates error in creating uuid for entity creation
-	ErrCreateUUID = errors.New("uuid creation failed")
+	// ErrCreateID indicates error in creating uuid for entity creation
+	ErrCreateID = errors.New("id creation failed")
 
 	// ErrCreateEntity indicates error in creating entity or entities
 	ErrCreateEntity = errors.New("create entity failed")
@@ -44,7 +44,7 @@ type Service interface {
 	ListSubscriptions(ctx context.Context, token, topic string) ([]Subscription, error)
 
 	// RemoveSubscription removes the subscription having the provided identifier.
-	RemoveSubscription(ctx context.Context, token, id string) error
+	RemoveSubscription(ctx context.Context, token, ownerID, topic string) error
 
 	consumers.Consumer
 }
@@ -76,7 +76,7 @@ func (ns *notifierService) CreateSubscription(ctx context.Context, token string,
 
 	sub.ID, err = ns.idp.ID()
 	if err != nil {
-		return "", errors.Wrap(ErrCreateUUID, err)
+		return "", errors.Wrap(ErrCreateID, err)
 	}
 
 	sub.OwnerEmail = res.GetEmail()
@@ -103,13 +103,13 @@ func (ns *notifierService) ListSubscriptions(ctx context.Context, token, topic s
 	return ns.subs.RetrieveAll(ctx, topic)
 }
 
-func (ns *notifierService) RemoveSubscription(ctx context.Context, token, id string) error {
+func (ns *notifierService) RemoveSubscription(ctx context.Context, token, ownerID, topic string) error {
 	_, err := ns.auth.Identify(ctx, &mainflux.Token{Value: token})
 	if err != nil {
 		return errors.Wrap(ErrUnauthorizedAccess, err)
 	}
 
-	return ns.subs.Remove(ctx, id)
+	return ns.subs.Remove(ctx, ownerID, topic)
 }
 
 func (ns *notifierService) Consume(message interface{}) error {
