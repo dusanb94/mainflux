@@ -77,9 +77,9 @@ func (repo subscriptionsRepo) Retrieve(ctx context.Context, ownerID, topic strin
 }
 
 func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, topic string) ([]notifiers.Subscription, error) {
-	q := `SELECT id, owner_id, owner_email, topic subscriptions WHERE topic = $1`
-
-	rows, err := repo.db.NamedQueryContext(ctx, q, topic)
+	q := `SELECT id, owner_id, owner_email, topic FROM subscriptions WHERE topic = :topic`
+	args := map[string]interface{}{"topic": topic}
+	rows, err := repo.db.NamedQueryContext(ctx, q, args)
 	if err != nil {
 		return []notifiers.Subscription{}, errors.Wrap(things.ErrSelectEntity, err)
 	}

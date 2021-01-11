@@ -14,7 +14,7 @@ import (
 
 const (
 	footer          = "Sent by Mainflux SMTP Notification"
-	contentTemplate = `A publisher with an id %s sent the message over %s with the following values\n %s`
+	contentTemplate = "A publisher with an id %s sent the message over %s with the following values \n %s"
 )
 
 var errMessage = errors.New("failed to convert to Mainflux message")
@@ -30,15 +30,13 @@ func New(agent *email.Agent) notifiers.Notifier {
 }
 
 func (c *emailer) Notify(from string, to []string, msg messaging.Message) error {
-	header := msg.Channel
-	subject := fmt.Sprintf(`Channel %s`, msg.Channel)
+	subject := fmt.Sprintf(`Notification for Channel %s`, msg.Channel)
 	if msg.Subtopic != "" {
 		subject = fmt.Sprintf("%s and subtopic %s", subject, msg.Subtopic)
 	}
 
 	values := string(msg.Payload)
-
 	content := fmt.Sprintf(contentTemplate, msg.Publisher, msg.Protocol, values)
 
-	return c.agent.Send(to, "", subject, header, content, footer)
+	return c.agent.Send(to, from, subject, "", content, footer)
 }

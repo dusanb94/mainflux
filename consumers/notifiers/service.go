@@ -131,10 +131,14 @@ func (ns *notifierService) Consume(message interface{}) error {
 	if err != nil {
 		return err
 	}
+
 	var to []string
 	for _, sub := range subs {
 		to = append(to, sub.OwnerEmail)
 	}
-	// Send(To []string, From, Subject, Header, Content, Footer string) error {
-	return ns.notifier.Notify("", to, msg)
+	if len(to) > 0 {
+		return ns.notifier.Notify("", to, msg)
+	}
+
+	return nil
 }
