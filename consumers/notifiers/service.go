@@ -5,9 +5,11 @@ package notifiers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/mainflux/mainflux/consumers"
 	"github.com/mainflux/mainflux/pkg/errors"
+	"github.com/mainflux/mainflux/pkg/messaging"
 
 	"github.com/mainflux/mainflux"
 )
@@ -20,14 +22,17 @@ var (
 	// ErrCreateID indicates error in creating uuid for entity creation
 	ErrCreateID = errors.New("id creation failed")
 
-	// ErrCreateEntity indicates error in creating entity or entities
-	ErrCreateEntity = errors.New("create entity failed")
+	// // ErrCreateEntity indicates error in creating entity or entities
+	// ErrCreateEntity = errors.New("create entity failed")
 
-	// ErrViewEntity indicates error in viewing entity or entities
-	ErrViewEntity = errors.New("view entity failed")
+	// // ErrViewEntity indicates error in viewing entity or entities
+	// ErrViewEntity = errors.New("view entity failed")
 
-	// ErrRemoveEntity indicates error in removing entity
-	ErrRemoveEntity = errors.New("remove entity failed")
+	// // ErrRemoveEntity indicates error in removing entity
+	// ErrRemoveEntity = errors.New("remove entity failed")
+
+	// ErrMessage indicates an error converting a message to Mainflux message.
+	ErrMessage = errors.New("failed to convert to Mainflux message")
 )
 
 // Service reprents a notification service.
@@ -55,16 +60,16 @@ type notifierService struct {
 	auth     mainflux.AuthServiceClient
 	subs     SubscriptionsRepository
 	idp      mainflux.IDProvider
-	consumer consumers.Consumer
+	notifier Notifier
 }
 
 // New instantiates the things service implementation.
-func New(auth mainflux.AuthServiceClient, subs SubscriptionsRepository, idp mainflux.IDProvider, consumer consumers.Consumer) Service {
+func New(auth mainflux.AuthServiceClient, subs SubscriptionsRepository, idp mainflux.IDProvider, notifier Notifier) Service {
 	return &notifierService{
 		auth:     auth,
 		subs:     subs,
 		idp:      idp,
-		consumer: consumer,
+		notifier: notifier,
 	}
 }
 
@@ -113,5 +118,23 @@ func (ns *notifierService) RemoveSubscription(ctx context.Context, token, ownerI
 }
 
 func (ns *notifierService) Consume(message interface{}) error {
-	return ns.Consume(message)
+	msg, ok := message.(messaging.Message)
+	if !ok {
+		return ErrMessage
+	}
+	topic := msg.Channel
+	if msg.Subtopic != "" {
+		topic = fmt.Sprintf("%s.%s", msg.Channel, msg.Subtopic)
+	}
+
+	subs, err := ns.subs.RetrieveAll(context.Background(), topic)
+	if err != nil {
+		return err
+	}
+	var to []string
+	for _, sub := range subs {
+		to = append(to, sub.OwnerEmail)
+	}
+	// Send(To []string, From, Subject, Header, Content, Footer string) error {
+	return ns.notifier.Notify("", to, msg)
 }
