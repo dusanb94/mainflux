@@ -15,23 +15,25 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mainflux/mainflux/consumers"
-	"github.com/mainflux/mainflux/consumers/notifiers"
-	"github.com/mainflux/mainflux/consumers/notifiers/tracing"
-	"github.com/mainflux/mainflux/internal/email"
-	"github.com/mainflux/mainflux/pkg/messaging/nats"
-	"github.com/mainflux/mainflux/pkg/ulid"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-
+	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 	"github.com/jmoiron/sqlx"
 	"github.com/mainflux/mainflux"
 	authapi "github.com/mainflux/mainflux/auth/api/grpc"
+	"github.com/mainflux/mainflux/consumers"
+	"github.com/mainflux/mainflux/consumers/notifiers"
 	"github.com/mainflux/mainflux/consumers/notifiers/api"
 	"github.com/mainflux/mainflux/consumers/notifiers/postgres"
+	"github.com/mainflux/mainflux/consumers/notifiers/smtp"
+	"github.com/mainflux/mainflux/consumers/notifiers/tracing"
+	"github.com/mainflux/mainflux/internal/email"
 	"github.com/mainflux/mainflux/logger"
+	"github.com/mainflux/mainflux/pkg/messaging/nats"
+	"github.com/mainflux/mainflux/pkg/ulid"
 	opentracing "github.com/opentracing/opentracing-go"
+	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	jconfig "github.com/uber/jaeger-client-go/config"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -40,7 +42,7 @@ const (
 	defDBPort        = "5432"
 	defDBUser        = "mainflux"
 	defDBPass        = "mainflux"
-	defDB            = "users"
+	defDB            = "subscriptions"
 	defConfigPath    = "/config.toml"
 	defDBSSLMode     = "disable"
 	defDBSSLCert     = ""
@@ -283,23 +285,30 @@ func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthServic
 	repo := tracing.New(postgres.New(database), tracer)
 	idp := ulid.New()
 
-	svc := notifiers.New(auth, repo, idp, nil)
-	// svc = api.LoggingMiddleware(svc, logger)
-	// svc = api.MetricsMiddleware(
-	// 	svc,
-	// 	kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
-	// 		Namespace: "notifier",
-	// 		Subsystem: "smtp",
-	// 		Name:      "request_count",
-	// 		Help:      "Number of requests received.",
-	// 	}, []string{"method"}),
-	// 	kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
-	// 		Namespace: "notifier",
-	// 		Subsystem: "smtp",
-	// 		Name:      "request_latency_microseconds",
-	// 		Help:      "Total duration of requests in microseconds.",
-	// 	}, []string{"method"}),
-	// )
+	agent, err := email.New(&c.emailConf)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to create email agent: %s", err))
+		os.Exit(1)
+	}
+
+	notifier := smtp.New(agent)
+	svc := notifiers.New(auth, repo, idp, notifier)
+	svc = api.LoggingMiddleware(svc, logger)
+	svc = api.MetricsMiddleware(
+		svc,
+		kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: "notifier",
+			Subsystem: "smtp",
+			Name:      "request_count",
+			Help:      "Number of requests received.",
+		}, []string{"method"}),
+		kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
+			Namespace: "notifier",
+			Subsystem: "smtp",
+			Name:      "request_latency_microseconds",
+			Help:      "Total duration of requests in microseconds.",
+		}, []string{"method"}),
+	)
 	return svc
 }
 
