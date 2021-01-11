@@ -31,14 +31,14 @@ func Start(sub messaging.Subscriber, consumer Consumer, transformer transformers
 	}
 
 	for _, subject := range subjects {
-		if err := sub.Subscribe(subject, handle(transformer, consumer)); err != nil {
+		if err := sub.Subscribe(subject, handler(transformer, consumer)); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func handle(t transformers.Transformer, c Consumer) messaging.MessageHandler {
+func handler(t transformers.Transformer, c Consumer) messaging.MessageHandler {
 	return func(msg messaging.Message) error {
 		m := interface{}(msg)
 		var err error

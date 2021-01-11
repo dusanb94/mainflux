@@ -1,16 +1,15 @@
-# Writers
+# Consumers
 
-Writers provide an implementation of various `message writers`.
-Message writers are services that normalize (in `SenML` format)
-Mainflux messages and store them in specific data store.
+Consumers provide an abstraction of various `Mainflux consumers`.
+Mainflux consumer is a generic service that can handle received messages - consume them.
+The message is not necessarily a Mainflux message - before consuming, Mainflux message can
+be transformed into any valid format that specific consumer can understand. For example,
+writers are consumers that can take a SenML or JSON message and store it.
 
-Writers are optional services and are treated as plugins. In order to
-run writer services, core services must be up and running. For more info
-on the platform core services with its dependencies, please check out
-the [Docker Compose][compose] file.
+Consumers are optional services and are treated as plugins. In order to
+run consumer services, core services must be up and running.
 
-For an in-depth explanation of the usage of `writers`, as well as thorough
+For an in-depth explanation of the usage of `consumers`, as well as thorough
 understanding of Mainflux, please check out the [official documentation][doc].
 
 [doc]: http://mainflux.readthedocs.io
-[compose]: ../docker/docker-compose.yml

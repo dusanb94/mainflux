@@ -6,6 +6,6 @@ package consumers
 // Consumer specifies message consuming API.
 type Consumer interface {
 	// Consume method is used to consumed received messages.
-	// A non-nil error is returned to indicate  operation failure.
+	// A non-nil error is returned to indicate operation failure.
 	Consume(messages interface{}) error
 }
