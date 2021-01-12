@@ -4,7 +4,7 @@
 package api
 
 import (
-	"github.com/mainflux/mainflux/consumers/notifiers"
+	"github.com/mainflux/mainflux/consumers/notify"
 	"github.com/mainflux/mainflux/pkg/errors"
 )
 
@@ -15,12 +15,12 @@ var (
 
 type createSubReq struct {
 	token string
-	sub   notifiers.Subscription
+	sub   notify.Subscription
 }
 
 func (req createSubReq) validate() error {
 	if req.token == "" {
-		return notifiers.ErrUnauthorizedAccess
+		return notify.ErrUnauthorizedAccess
 	}
 	if req.sub.Topic == "" {
 		return errInvalidTopic
@@ -36,7 +36,7 @@ type subReq struct {
 
 func (req subReq) validate() error {
 	if req.token == "" {
-		return notifiers.ErrUnauthorizedAccess
+		return notify.ErrUnauthorizedAccess
 	}
 	if req.OwnerID == "" || req.topic == "" {
 		return errNotFound
@@ -51,7 +51,7 @@ type listSubsReq struct {
 
 func (req listSubsReq) validate() error {
 	if req.token == "" {
-		return notifiers.ErrUnauthorizedAccess
+		return notify.ErrUnauthorizedAccess
 	}
 	if req.topic == "" {
 		return errNotFound

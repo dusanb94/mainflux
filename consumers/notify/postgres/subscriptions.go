@@ -8,7 +8,7 @@ import (
 	"database/sql"
 
 	"github.com/lib/pq"
-	"github.com/mainflux/mainflux/consumers/notifiers"
+	"github.com/mainflux/mainflux/consumers/notify"
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/things"
 	"github.com/mainflux/mainflux/users"
@@ -24,7 +24,7 @@ var (
 	errUnmarshal        = errors.New("Failed to unmarshal metadata")
 )
 
-var _ notifiers.SubscriptionsRepository = (*subscriptionsRepo)(nil)
+var _ notify.SubscriptionsRepository = (*subscriptionsRepo)(nil)
 
 const errDuplicate = "unique_violation"
 
@@ -33,13 +33,13 @@ type subscriptionsRepo struct {
 }
 
 // New instantiates a PostgreSQL implementation of Subscriptions repository.
-func New(db Database) notifiers.SubscriptionsRepository {
+func New(db Database) notify.SubscriptionsRepository {
 	return &subscriptionsRepo{
 		db: db,
 	}
 }
 
-func (repo subscriptionsRepo) Save(ctx context.Context, sub notifiers.Subscription) (string, error) {
+func (repo subscriptionsRepo) Save(ctx context.Context, sub notify.Subscription) (string, error) {
 	if sub.ID == "" || sub.OwnerID == "" || sub.OwnerEmail == "" {
 		return "", users.ErrMalformedEntity
 	}
@@ -62,34 +62,34 @@ func (repo subscriptionsRepo) Save(ctx context.Context, sub notifiers.Subscripti
 	return sub.ID, nil
 }
 
-func (repo subscriptionsRepo) Retrieve(ctx context.Context, ownerID, topic string) (notifiers.Subscription, error) {
+func (repo subscriptionsRepo) Retrieve(ctx context.Context, ownerID, topic string) (notify.Subscription, error) {
 	q := `SELECT id, owner_id, owner_email, topic subscriptions WHERE owner_id = $1 AND topic = $2`
 	sub := dbSubscription{}
 	if err := repo.db.QueryRowxContext(ctx, q, ownerID, topic).StructScan(&sub); err != nil {
 		if err == sql.ErrNoRows {
-			return notifiers.Subscription{}, errors.Wrap(users.ErrNotFound, err)
+			return notify.Subscription{}, errors.Wrap(users.ErrNotFound, err)
 
 		}
-		return notifiers.Subscription{}, errors.Wrap(errRetrieveDB, err)
+		return notify.Subscription{}, errors.Wrap(errRetrieveDB, err)
 	}
 
 	return fromDBSub(sub), nil
 }
 
-func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, topic string) ([]notifiers.Subscription, error) {
+func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, topic string) ([]notify.Subscription, error) {
 	q := `SELECT id, owner_id, owner_email, topic FROM subscriptions WHERE topic = :topic`
 	args := map[string]interface{}{"topic": topic}
 	rows, err := repo.db.NamedQueryContext(ctx, q, args)
 	if err != nil {
-		return []notifiers.Subscription{}, errors.Wrap(things.ErrSelectEntity, err)
+		return []notify.Subscription{}, errors.Wrap(things.ErrSelectEntity, err)
 	}
 	defer rows.Close()
 
-	ret := []notifiers.Subscription{}
+	ret := []notify.Subscription{}
 	for rows.Next() {
 		sub := dbSubscription{}
 		if err := rows.StructScan(&sub); err != nil {
-			return []notifiers.Subscription{}, errors.Wrap(things.ErrSelectEntity, err)
+			return []notify.Subscription{}, errors.Wrap(things.ErrSelectEntity, err)
 		}
 		ret = append(ret, fromDBSub(sub))
 	}
@@ -113,8 +113,8 @@ type dbSubscription struct {
 	Topic      string `db:"topic"`
 }
 
-func fromDBSub(sub dbSubscription) notifiers.Subscription {
-	return notifiers.Subscription{
+func fromDBSub(sub dbSubscription) notify.Subscription {
+	return notify.Subscription{
 		ID:         sub.ID,
 		OwnerID:    sub.OwnerID,
 		OwnerEmail: sub.OwnerEmail,

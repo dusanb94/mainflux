@@ -20,11 +20,11 @@ import (
 	"github.com/mainflux/mainflux"
 	authapi "github.com/mainflux/mainflux/auth/api/grpc"
 	"github.com/mainflux/mainflux/consumers"
-	"github.com/mainflux/mainflux/consumers/notifiers"
-	"github.com/mainflux/mainflux/consumers/notifiers/api"
-	"github.com/mainflux/mainflux/consumers/notifiers/postgres"
-	"github.com/mainflux/mainflux/consumers/notifiers/smtp"
-	"github.com/mainflux/mainflux/consumers/notifiers/tracing"
+	"github.com/mainflux/mainflux/consumers/notify"
+	"github.com/mainflux/mainflux/consumers/notify/api"
+	"github.com/mainflux/mainflux/consumers/notify/postgres"
+	"github.com/mainflux/mainflux/consumers/notify/smtp"
+	"github.com/mainflux/mainflux/consumers/notify/tracing"
 	"github.com/mainflux/mainflux/internal/email"
 	"github.com/mainflux/mainflux/logger"
 	"github.com/mainflux/mainflux/pkg/messaging/nats"
@@ -68,20 +68,20 @@ const (
 	defAuthURL     = "localhost:8181"
 	defAuthTimeout = "1s"
 
-	envLogLevel      = "MF_SMTP_NOTIFIER_LOG_LEVEL"
-	envDBHost        = "MF_SMTP_NOTIFIER_DB_HOST"
-	envDBPort        = "MF_SMTP_NOTIFIER_DB_PORT"
-	envDBUser        = "MF_SMTP_NOTIFIER_DB_USER"
-	envDBPass        = "MF_SMTP_NOTIFIER_DB_PASS"
-	envDB            = "MF_SMTP_NOTIFIER_DB"
-	envConfigPath    = "MF_SMTP_NOTIFIER_WRITER_CONFIG_PATH"
-	envDBSSLMode     = "MF_SMTP_NOTIFIER_DB_SSL_MODE"
-	envDBSSLCert     = "MF_SMTP_NOTIFIER_DB_SSL_CERT"
-	envDBSSLKey      = "MF_SMTP_NOTIFIER_DB_SSL_KEY"
-	envDBSSLRootCert = "MF_SMTP_NOTIFIER_DB_SSL_ROOT_CERT"
-	envHTTPPort      = "MF_SMTP_NOTIFIER_HTTP_PORT"
-	envServerCert    = "MF_SMTP_NOTIFIER_SERVER_CERT"
-	envServerKey     = "MF_SMTP_NOTIFIER_SERVER_KEY"
+	envLogLevel      = "MF_SMTP_NOTIFY_LOG_LEVEL"
+	envDBHost        = "MF_SMTP_NOTIFY_DB_HOST"
+	envDBPort        = "MF_SMTP_NOTIFY_DB_PORT"
+	envDBUser        = "MF_SMTP_NOTIFY_DB_USER"
+	envDBPass        = "MF_SMTP_NOTIFY_DB_PASS"
+	envDB            = "MF_SMTP_NOTIFY_DB"
+	envConfigPath    = "MF_SMTP_NOTIFY_WRITER_CONFIG_PATH"
+	envDBSSLMode     = "MF_SMTP_NOTIFY_DB_SSL_MODE"
+	envDBSSLCert     = "MF_SMTP_NOTIFY_DB_SSL_CERT"
+	envDBSSLKey      = "MF_SMTP_NOTIFY_DB_SSL_KEY"
+	envDBSSLRootCert = "MF_SMTP_NOTIFY_DB_SSL_ROOT_CERT"
+	envHTTPPort      = "MF_SMTP_NOTIFY_HTTP_PORT"
+	envServerCert    = "MF_SMTP_NOTIFY_SERVER_CERT"
+	envServerKey     = "MF_SMTP_NOTIFY_SERVER_KEY"
 	envJaegerURL     = "MF_JAEGER_URL"
 	envNatsURL       = "MF_NATS_URL"
 
@@ -276,7 +276,7 @@ func connectToAuthn(cfg config, tracer opentracing.Tracer, logger logger.Logger)
 	return authapi.NewClient(tracer, conn, cfg.authTimeout), conn.Close
 }
 
-func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthServiceClient, c config, logger logger.Logger) notifiers.Service {
+func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthServiceClient, c config, logger logger.Logger) notify.Service {
 	database := postgres.NewDatabase(db)
 	repo := tracing.New(postgres.New(database), tracer)
 	idp := ulid.New()
@@ -288,7 +288,7 @@ func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthServic
 	}
 
 	notifier := smtp.New(agent)
-	svc := notifiers.New(auth, repo, idp, notifier)
+	svc := notify.New(auth, repo, idp, notifier)
 	svc = api.LoggingMiddleware(svc, logger)
 	svc = api.MetricsMiddleware(
 		svc,
@@ -308,7 +308,7 @@ func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthServic
 	return svc
 }
 
-func startHTTPServer(tracer opentracing.Tracer, svc notifiers.Service, port string, certFile string, keyFile string, logger logger.Logger, errs chan error) {
+func startHTTPServer(tracer opentracing.Tracer, svc notify.Service, port string, certFile string, keyFile string, logger logger.Logger, errs chan error) {
 	p := fmt.Sprintf(":%s", port)
 	if certFile != "" || keyFile != "" {
 		logger.Info(fmt.Sprintf("SMTP notifier service started using https, cert %s key %s, exposed port %s", certFile, keyFile, port))

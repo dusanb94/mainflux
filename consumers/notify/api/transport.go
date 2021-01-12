@@ -9,7 +9,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/mainflux/mainflux/consumers/notifiers"
+	"github.com/mainflux/mainflux/consumers/notify"
 	"github.com/mainflux/mainflux/pkg/errors"
 
 	kitot "github.com/go-kit/kit/tracing/opentracing"
@@ -36,7 +36,7 @@ const (
 var errMalformedEntity = errors.New("failed to decode request body")
 
 // MakeHandler returns a HTTP handler for API endpoints.
-func MakeHandler(svc notifiers.Service, tracer opentracing.Tracer) http.Handler {
+func MakeHandler(svc notify.Service, tracer opentracing.Tracer) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 	}

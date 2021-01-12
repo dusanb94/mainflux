@@ -7,10 +7,10 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/endpoint"
-	"github.com/mainflux/mainflux/consumers/notifiers"
+	"github.com/mainflux/mainflux/consumers/notify"
 )
 
-func createSubscriptionEndpoint(svc notifiers.Service) endpoint.Endpoint {
+func createSubscriptionEndpoint(svc notify.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(createSubReq)
 		if err := req.validate(); err != nil {
@@ -28,7 +28,7 @@ func createSubscriptionEndpoint(svc notifiers.Service) endpoint.Endpoint {
 	}
 }
 
-func viewSubscriptionEndpint(svc notifiers.Service) endpoint.Endpoint {
+func viewSubscriptionEndpint(svc notify.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(subReq)
 		if err := req.validate(); err != nil {
@@ -48,7 +48,7 @@ func viewSubscriptionEndpint(svc notifiers.Service) endpoint.Endpoint {
 	}
 }
 
-func listSubscriptionsEndpoint(svc notifiers.Service) endpoint.Endpoint {
+func listSubscriptionsEndpoint(svc notify.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(listSubsReq)
 		if err := req.validate(); err != nil {
@@ -72,7 +72,7 @@ func listSubscriptionsEndpoint(svc notifiers.Service) endpoint.Endpoint {
 	}
 }
 
-func deleteSubscriptionEndpint(svc notifiers.Service) endpoint.Endpoint {
+func deleteSubscriptionEndpint(svc notify.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(subReq)
 		if err := req.validate(); err != nil {
