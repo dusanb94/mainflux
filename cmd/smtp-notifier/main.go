@@ -315,10 +315,10 @@ func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthServic
 func startHTTPServer(tracer opentracing.Tracer, svc notifiers.Service, port string, certFile string, keyFile string, logger logger.Logger, errs chan error) {
 	p := fmt.Sprintf(":%s", port)
 	if certFile != "" || keyFile != "" {
-		logger.Info(fmt.Sprintf("Users service started using https, cert %s key %s, exposed port %s", certFile, keyFile, port))
+		logger.Info(fmt.Sprintf("SMTP notifier service started using https, cert %s key %s, exposed port %s", certFile, keyFile, port))
 		errs <- http.ListenAndServeTLS(p, certFile, keyFile, api.MakeHandler(svc, tracer))
 	} else {
-		logger.Info(fmt.Sprintf("Users service started using http, exposed port %s", port))
+		logger.Info(fmt.Sprintf("SMTP notifier service started using http, exposed port %s", port))
 		errs <- http.ListenAndServe(p, api.MakeHandler(svc, tracer))
 	}
 }
