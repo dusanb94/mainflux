@@ -62,14 +62,11 @@ const (
 	defEmailFromAddress = ""
 	defEmailFromName    = ""
 	defEmailTemplate    = "email.tmpl"
-	defAdminEmail       = ""
-	defAdminPassword    = ""
-	defAdminGroup       = "mainflux"
 
-	defAuthnTLS     = "false"
-	defAuthnCACerts = ""
-	defAuthnURL     = "localhost:8181"
-	defAuthnTimeout = "1s"
+	defAuthTLS     = "false"
+	defAuthCACerts = ""
+	defAuthURL     = "localhost:8181"
+	defAuthTimeout = "1s"
 
 	envLogLevel      = "MF_SMTP_NOTIFIER_LOG_LEVEL"
 	envDBHost        = "MF_SMTP_NOTIFIER_DB_HOST"
@@ -95,29 +92,28 @@ const (
 	envEmailPassword    = "MF_EMAIL_PASSWORD"
 	envEmailFromAddress = "MF_EMAIL_FROM_ADDRESS"
 	envEmailFromName    = "MF_EMAIL_FROM_NAME"
-	envEmailLogLevel    = "MF_EMAIL_LOG_LEVEL"
 	envEmailTemplate    = "MF_EMAIL_TEMPLATE"
 
-	envAuthnTLS     = "MF_AUTH_CLIENT_TLS"
-	envAuthnCACerts = "MF_AUTH_CA_CERTS"
-	envAuthnURL     = "MF_AUTH_GRPC_URL"
-	envAuthnTimeout = "MF_AUTH_GRPC_TIMEOUT"
+	envAuthTLS     = "MF_AUTH_CLIENT_TLS"
+	envAuthCACerts = "MF_AUTH_CA_CERTS"
+	envAuthURL     = "MF_AUTH_GRPC_URL"
+	envAuthTimeout = "MF_AUTH_GRPC_TIMEOUT"
 )
 
 type config struct {
-	natsURL      string
-	configPath   string
-	logLevel     string
-	dbConfig     postgres.Config
-	emailConf    email.Config
-	httpPort     string
-	serverCert   string
-	serverKey    string
-	jaegerURL    string
-	authnTLS     bool
-	authnCACerts string
-	authnURL     string
-	authnTimeout time.Duration
+	natsURL     string
+	configPath  string
+	logLevel    string
+	dbConfig    postgres.Config
+	emailConf   email.Config
+	httpPort    string
+	serverCert  string
+	serverKey   string
+	jaegerURL   string
+	authTLS     bool
+	authCACerts string
+	authURL     string
+	authTimeout time.Duration
 }
 
 func main() {
@@ -172,14 +168,14 @@ func main() {
 }
 
 func loadConfig() config {
-	authnTimeout, err := time.ParseDuration(mainflux.Env(envAuthnTimeout, defAuthnTimeout))
+	authnTimeout, err := time.ParseDuration(mainflux.Env(envAuthTimeout, defAuthTimeout))
 	if err != nil {
-		log.Fatalf("Invalid %s value: %s", envAuthnTimeout, err.Error())
+		log.Fatalf("Invalid %s value: %s", envAuthTimeout, err.Error())
 	}
 
-	tls, err := strconv.ParseBool(mainflux.Env(envAuthnTLS, defAuthnTLS))
+	tls, err := strconv.ParseBool(mainflux.Env(envAuthTLS, defAuthTLS))
 	if err != nil {
-		log.Fatalf("Invalid value passed for %s\n", envAuthnTLS)
+		log.Fatalf("Invalid value passed for %s\n", envAuthTLS)
 	}
 
 	dbConfig := postgres.Config{
@@ -206,19 +202,19 @@ func loadConfig() config {
 	}
 
 	return config{
-		logLevel:     mainflux.Env(envLogLevel, defLogLevel),
-		natsURL:      mainflux.Env(envNatsURL, defNatsURL),
-		configPath:   mainflux.Env(envConfigPath, defConfigPath),
-		dbConfig:     dbConfig,
-		emailConf:    emailConf,
-		httpPort:     mainflux.Env(envHTTPPort, defHTTPPort),
-		serverCert:   mainflux.Env(envServerCert, defServerCert),
-		serverKey:    mainflux.Env(envServerKey, defServerKey),
-		jaegerURL:    mainflux.Env(envJaegerURL, defJaegerURL),
-		authnTLS:     tls,
-		authnCACerts: mainflux.Env(envAuthnCACerts, defAuthnCACerts),
-		authnURL:     mainflux.Env(envAuthnURL, defAuthnURL),
-		authnTimeout: authnTimeout,
+		logLevel:    mainflux.Env(envLogLevel, defLogLevel),
+		natsURL:     mainflux.Env(envNatsURL, defNatsURL),
+		configPath:  mainflux.Env(envConfigPath, defConfigPath),
+		dbConfig:    dbConfig,
+		emailConf:   emailConf,
+		httpPort:    mainflux.Env(envHTTPPort, defHTTPPort),
+		serverCert:  mainflux.Env(envServerCert, defServerCert),
+		serverKey:   mainflux.Env(envServerKey, defServerKey),
+		jaegerURL:   mainflux.Env(envJaegerURL, defJaegerURL),
+		authTLS:     tls,
+		authCACerts: mainflux.Env(envAuthCACerts, defAuthCACerts),
+		authURL:     mainflux.Env(envAuthURL, defAuthURL),
+		authTimeout: authnTimeout,
 	}
 
 }
@@ -257,9 +253,9 @@ func connectToDB(dbConfig postgres.Config, logger logger.Logger) *sqlx.DB {
 
 func connectToAuthn(cfg config, tracer opentracing.Tracer, logger logger.Logger) (mainflux.AuthServiceClient, func() error) {
 	var opts []grpc.DialOption
-	if cfg.authnTLS {
-		if cfg.authnCACerts != "" {
-			tpc, err := credentials.NewClientTLSFromFile(cfg.authnCACerts, "")
+	if cfg.authTLS {
+		if cfg.authCACerts != "" {
+			tpc, err := credentials.NewClientTLSFromFile(cfg.authCACerts, "")
 			if err != nil {
 				logger.Error(fmt.Sprintf("Failed to create tls credentials: %s", err))
 				os.Exit(1)
@@ -271,13 +267,13 @@ func connectToAuthn(cfg config, tracer opentracing.Tracer, logger logger.Logger)
 		logger.Info("gRPC communication is not encrypted")
 	}
 
-	conn, err := grpc.Dial(cfg.authnURL, opts...)
+	conn, err := grpc.Dial(cfg.authURL, opts...)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to connect to authn service: %s", err))
 		os.Exit(1)
 	}
 
-	return authapi.NewClient(tracer, conn, cfg.authnTimeout), conn.Close
+	return authapi.NewClient(tracer, conn, cfg.authTimeout), conn.Close
 }
 
 func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthServiceClient, c config, logger logger.Logger) notifiers.Service {
