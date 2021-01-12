@@ -19,17 +19,8 @@ var (
 	// when accessing a protected resource.
 	ErrUnauthorizedAccess = errors.New("missing or invalid credentials provided")
 
-	// ErrCreateID indicates error in creating uuid for entity creation
-	ErrCreateID = errors.New("id creation failed")
-
-	// // ErrCreateEntity indicates error in creating entity or entities
-	// ErrCreateEntity = errors.New("create entity failed")
-
-	// // ErrViewEntity indicates error in viewing entity or entities
-	// ErrViewEntity = errors.New("view entity failed")
-
-	// // ErrRemoveEntity indicates error in removing entity
-	// ErrRemoveEntity = errors.New("remove entity failed")
+	// ErrCreateID indicates error in creating id for entity creation
+	ErrCreateID = errors.New("failed to create id")
 
 	// ErrMessage indicates an error converting a message to Mainflux message.
 	ErrMessage = errors.New("failed to convert to Mainflux message")
