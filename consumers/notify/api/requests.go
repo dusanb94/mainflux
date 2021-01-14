@@ -9,21 +9,26 @@ import (
 )
 
 var (
-	errInvalidTopic = errors.New("invalid Subscritpion topic")
-	errNotFound     = errors.New("invalid or empty Subscription id")
+	errInvalidTopic   = errors.New("invalid Subscritpion topic")
+	errInvalidContact = errors.New("invalid Subscritpion contact")
+	errNotFound       = errors.New("invalid or empty Subscription id")
 )
 
 type createSubReq struct {
-	token string
-	sub   notify.Subscription
+	token   string
+	Contact string `json:"contact,omitempty"`
+	Topic   string `json:"topic,omitempty"`
 }
 
 func (req createSubReq) validate() error {
 	if req.token == "" {
 		return notify.ErrUnauthorizedAccess
 	}
-	if req.sub.Topic == "" {
+	if req.Topic == "" {
 		return errInvalidTopic
+	}
+	if req.Contact == "" {
+		return errInvalidContact
 	}
 	return nil
 }

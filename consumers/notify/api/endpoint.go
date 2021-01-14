@@ -16,7 +16,11 @@ func createSubscriptionEndpoint(svc notify.Service) endpoint.Endpoint {
 		if err := req.validate(); err != nil {
 			return createSubRes{}, err
 		}
-		id, err := svc.CreateSubscription(ctx, req.token, req.sub)
+		sub := notify.Subscription{
+			Contact: req.Contact,
+			Topic:   req.Topic,
+		}
+		id, err := svc.CreateSubscription(ctx, req.token, sub)
 		if err != nil {
 			return createSubRes{}, err
 		}
@@ -41,7 +45,7 @@ func viewSubscriptionEndpint(svc notify.Service) endpoint.Endpoint {
 		res := viewSubRes{
 			ID:         sub.ID,
 			OwnerID:    sub.OwnerID,
-			OwnerEmail: sub.OwnerEmail,
+			OwnerEmail: sub.Contact,
 			Topic:      sub.Topic,
 		}
 		return res, nil
@@ -63,7 +67,7 @@ func listSubscriptionsEndpoint(svc notify.Service) endpoint.Endpoint {
 			r := viewSubRes{
 				ID:         sub.ID,
 				OwnerID:    sub.OwnerID,
-				OwnerEmail: sub.OwnerEmail,
+				OwnerEmail: sub.Contact,
 				Topic:      sub.Topic,
 			}
 			res.Data = append(res.Data, r)

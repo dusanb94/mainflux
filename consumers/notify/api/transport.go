@@ -134,6 +134,8 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 		switch {
 		case errors.Contains(errorVal, errMalformedEntity):
 			w.WriteHeader(http.StatusBadRequest)
+		case errors.Contains(errorVal, notify.ErrConflict):
+			w.WriteHeader(http.StatusConflict)
 		case errors.Contains(errorVal, io.ErrUnexpectedEOF):
 			w.WriteHeader(http.StatusBadRequest)
 		case errors.Contains(errorVal, io.EOF):

@@ -22,6 +22,18 @@ var (
 	// ErrCreateID indicates error in creating id for entity creation
 	ErrCreateID = errors.New("failed to create id")
 
+	// ErrConflict indicates usage of the existing subscription.
+	ErrConflict = errors.New("subscription already exist")
+
+	// ErrNotFound indicates a non-existent entity request.
+	ErrNotFound = errors.New("non-existent entity")
+
+	// ErrSelectEntity indicates problem with scanning data from db.
+	ErrSelectEntity = errors.New("failed to select entity")
+
+	// ErrRemoveEntity indicates error in removing entity
+	ErrRemoveEntity = errors.New("remove entity failed")
+
 	// ErrMessage indicates an error converting a message to Mainflux message.
 	ErrMessage = errors.New("failed to convert to Mainflux message")
 )
@@ -75,7 +87,6 @@ func (ns *notifierService) CreateSubscription(ctx context.Context, token string,
 		return "", errors.Wrap(ErrCreateID, err)
 	}
 
-	sub.OwnerEmail = res.GetEmail()
 	sub.OwnerID = res.GetId()
 
 	return ns.subs.Save(ctx, sub)
@@ -125,7 +136,7 @@ func (ns *notifierService) Consume(message interface{}) error {
 
 	var to []string
 	for _, sub := range subs {
-		to = append(to, sub.OwnerEmail)
+		to = append(to, sub.Contact)
 	}
 	if len(to) > 0 {
 		return ns.notifier.Notify("", to, msg)

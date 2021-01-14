@@ -7,10 +7,10 @@ import "context"
 
 // Subscription represents a user Subscription.
 type Subscription struct {
-	ID         string
-	OwnerID    string
-	OwnerEmail string
-	Topic      string
+	ID      string
+	OwnerID string
+	Contact string
+	Topic   string
 }
 
 // SubscriptionsRepository specifies a Subscription persistence API.
