@@ -38,15 +38,15 @@ func viewSubscriptionEndpint(svc notify.Service) endpoint.Endpoint {
 		if err := req.validate(); err != nil {
 			return viewSubRes{}, err
 		}
-		sub, err := svc.ViewSubscription(ctx, req.token, req.topic)
+		sub, err := svc.ViewSubscription(ctx, req.token, req.id)
 		if err != nil {
 			return viewSubRes{}, err
 		}
 		res := viewSubRes{
-			ID:         sub.ID,
-			OwnerID:    sub.OwnerID,
-			OwnerEmail: sub.Contact,
-			Topic:      sub.Topic,
+			ID:      sub.ID,
+			OwnerID: sub.OwnerID,
+			Contact: sub.Contact,
+			Topic:   sub.Topic,
 		}
 		return res, nil
 	}
@@ -58,17 +58,17 @@ func listSubscriptionsEndpoint(svc notify.Service) endpoint.Endpoint {
 		if err := req.validate(); err != nil {
 			return listSubsRes{}, err
 		}
-		subs, err := svc.ListSubscriptions(ctx, req.token, req.topic)
+		subs, err := svc.ListSubscriptions(ctx, req.token, req.topic, req.contact)
 		if err != nil {
 			return listSubsRes{}, err
 		}
 		var res listSubsRes
 		for _, sub := range subs {
 			r := viewSubRes{
-				ID:         sub.ID,
-				OwnerID:    sub.OwnerID,
-				OwnerEmail: sub.Contact,
-				Topic:      sub.Topic,
+				ID:      sub.ID,
+				OwnerID: sub.OwnerID,
+				Contact: sub.Contact,
+				Topic:   sub.Topic,
 			}
 			res.Data = append(res.Data, r)
 		}
@@ -82,7 +82,7 @@ func deleteSubscriptionEndpint(svc notify.Service) endpoint.Endpoint {
 		if err := req.validate(); err != nil {
 			return nil, err
 		}
-		if err := svc.RemoveSubscription(ctx, req.token, req.OwnerID, req.topic); err != nil {
+		if err := svc.RemoveSubscription(ctx, req.token, req.id); err != nil {
 			return nil, err
 		}
 		return removeSubRes{}, nil

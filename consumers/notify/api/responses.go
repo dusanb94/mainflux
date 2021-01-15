@@ -36,10 +36,10 @@ func (res createSubRes) Empty() bool {
 }
 
 type viewSubRes struct {
-	ID         string `json:"id"`
-	OwnerID    string `json:"owner_id"`
-	OwnerEmail string `json:"owner_email"`
-	Topic      string `json:"topic"`
+	ID      string `json:"id"`
+	OwnerID string `json:"owner_id"`
+	Contact string `json:"contact"`
+	Topic   string `json:"topic"`
 }
 
 func (res viewSubRes) Code() int {
@@ -55,7 +55,7 @@ func (res viewSubRes) Empty() bool {
 }
 
 type listSubsRes struct {
-	Data []viewSubRes `json:"subscriptions"`
+	Data []viewSubRes `json:"subscriptions,omitempty"`
 }
 
 func (res listSubsRes) Code() int {

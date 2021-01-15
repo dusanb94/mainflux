@@ -53,7 +53,8 @@ func migrateDB(db *sqlx.DB) error {
                         owner_id    VARCHAR(254),
                         contact     VARCHAR(254),
                         topic       TEXT,
-                        PRIMARY KEY (id, owner_id, topic)
+                        PRIMARY KEY (id, owner_id, topic),
+                        UNIQUE(topic, contact)
                     )`,
 				},
 				Down: []string{

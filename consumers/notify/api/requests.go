@@ -16,8 +16,8 @@ var (
 
 type createSubReq struct {
 	token   string
+	Topic   string
 	Contact string `json:"contact,omitempty"`
-	Topic   string `json:"topic,omitempty"`
 }
 
 func (req createSubReq) validate() error {
@@ -34,32 +34,29 @@ func (req createSubReq) validate() error {
 }
 
 type subReq struct {
-	token   string
-	OwnerID string `json:"owner_id"`
-	topic   string
+	token string
+	id    string
 }
 
 func (req subReq) validate() error {
 	if req.token == "" {
 		return notify.ErrUnauthorizedAccess
 	}
-	if req.OwnerID == "" || req.topic == "" {
+	if req.id == "" {
 		return errNotFound
 	}
 	return nil
 }
 
 type listSubsReq struct {
-	token string
-	topic string
+	token   string
+	topic   string
+	contact string
 }
 
 func (req listSubsReq) validate() error {
 	if req.token == "" {
 		return notify.ErrUnauthorizedAccess
-	}
-	if req.topic == "" {
-		return errNotFound
 	}
 	return nil
 }

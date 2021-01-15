@@ -50,7 +50,7 @@ func (lm *loggingMiddleware) ViewSubscription(ctx context.Context, token, topic 
 	return lm.svc.ViewSubscription(ctx, token, topic)
 }
 
-func (lm *loggingMiddleware) ListSubscriptions(ctx context.Context, token, topic string) (res []notify.Subscription, err error) {
+func (lm *loggingMiddleware) ListSubscriptions(ctx context.Context, token, topic, contact string) (res []notify.Subscription, err error) {
 	defer func(begin time.Time) {
 		message := fmt.Sprintf("Method list_subscription for topic %s and token %s took %s to complete", topic, token, time.Since(begin))
 		if err != nil {
@@ -60,12 +60,12 @@ func (lm *loggingMiddleware) ListSubscriptions(ctx context.Context, token, topic
 		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
 	}(time.Now())
 
-	return lm.svc.ListSubscriptions(ctx, token, topic)
+	return lm.svc.ListSubscriptions(ctx, token, topic, contact)
 }
 
-func (lm *loggingMiddleware) RemoveSubscription(ctx context.Context, token, ownerID, topic string) (err error) {
+func (lm *loggingMiddleware) RemoveSubscription(ctx context.Context, token, id string) (err error) {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method remove_subscription from the owner %s for token %s and topic %s took %s to complete", ownerID, token, topic, time.Since(begin))
+		message := fmt.Sprintf("Method remove_subscription for subscription %s took %s to complete", id, time.Since(begin))
 		if err != nil {
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return
@@ -73,7 +73,7 @@ func (lm *loggingMiddleware) RemoveSubscription(ctx context.Context, token, owne
 		lm.logger.Info(fmt.Sprintf("%s without errors.", message))
 	}(time.Now())
 
-	return lm.svc.RemoveSubscription(ctx, token, ownerID, topic)
+	return lm.svc.RemoveSubscription(ctx, token, id)
 }
 
 func (lm *loggingMiddleware) Consume(msg interface{}) (err error) {

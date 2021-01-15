@@ -43,14 +43,14 @@ func MakeHandler(svc notify.Service, tracer opentracing.Tracer) http.Handler {
 
 	mux := bone.New()
 
-	mux.Post("/subscriptions", kithttp.NewServer(
+	mux.Post("/subscriptions/:topic", kithttp.NewServer(
 		kitot.TraceServer(tracer, "create_subscription")(createSubscriptionEndpoint(svc)),
 		decodeCreateSubscription,
 		encodeResponse,
 		opts...,
 	))
 
-	mux.Get("/subscriptions/:topic", kithttp.NewServer(
+	mux.Get("/subscriptions/:id", kithttp.NewServer(
 		kitot.TraceServer(tracer, "view_subscription")(viewSubscriptionEndpint(svc)),
 		decodeSubscription,
 		encodeResponse,
@@ -63,7 +63,8 @@ func MakeHandler(svc notify.Service, tracer opentracing.Tracer) http.Handler {
 		encodeResponse,
 		opts...,
 	))
-	mux.Delete("/subscriptions/:topic", kithttp.NewServer(
+
+	mux.Delete("/subscriptions/:id", kithttp.NewServer(
 		kitot.TraceServer(tracer, "delete_group")(deleteSubscriptionEndpint(svc)),
 		decodeSubscription,
 		encodeResponse,
@@ -77,7 +78,9 @@ func MakeHandler(svc notify.Service, tracer opentracing.Tracer) http.Handler {
 }
 
 func decodeCreateSubscription(_ context.Context, r *http.Request) (interface{}, error) {
-	var req createSubReq
+	req := createSubReq{
+		Topic: bone.GetValue(r, "topic"),
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return nil, errors.Wrap(errMalformedEntity, err)
 	}
@@ -88,13 +91,9 @@ func decodeCreateSubscription(_ context.Context, r *http.Request) (interface{}, 
 
 func decodeSubscription(_ context.Context, r *http.Request) (interface{}, error) {
 	req := subReq{
-		topic: bone.GetValue(r, "topic"),
+		id:    bone.GetValue(r, "id"),
+		token: r.Header.Get("Authorization"),
 	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		return nil, errors.Wrap(errMalformedEntity, err)
-	}
-	req.token = r.Header.Get("Authorization")
 
 	return req, nil
 }
@@ -108,6 +107,10 @@ func decodeListSubscriptions(_ context.Context, r *http.Request) (interface{}, e
 		req.topic = vals[0]
 	}
 
+	vals = bone.GetQuery(r, "contact")
+	if len(vals) > 0 {
+		req.contact = vals[0]
+	}
 	return req, nil
 }
 

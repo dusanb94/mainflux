@@ -19,13 +19,13 @@ type SubscriptionsRepository interface {
 	// error response.
 	Save(ctx context.Context, sub Subscription) (string, error)
 
-	// Retrieve retrieves the subscription for the given owner and topic.
-	Retrieve(ctx context.Context, ownerID, topic string) (Subscription, error)
+	// Retrieve retrieves the subscription for the given id.
+	Retrieve(ctx context.Context, id string) (Subscription, error)
 
 	// Remove removes the subscription having the provided identifier, that is owned
 	// by the specified user.
-	RetrieveAll(ctx context.Context, topic string) ([]Subscription, error)
+	RetrieveAll(ctx context.Context, topic, contact string) ([]Subscription, error)
 
-	// Remove removes the subscription having the provided owner ID and topic.
-	Remove(ctx context.Context, ownerID, topic string) error
+	// Remove removes the subscription having the provided an ID.
+	Remove(ctx context.Context, id string) error
 }

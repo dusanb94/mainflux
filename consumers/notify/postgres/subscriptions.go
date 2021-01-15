@@ -6,6 +6,8 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"strings"
 
 	"github.com/lib/pq"
 	"github.com/mainflux/mainflux/consumers/notify"
@@ -53,10 +55,10 @@ func (repo subscriptionsRepo) Save(ctx context.Context, sub notify.Subscription)
 	return sub.ID, nil
 }
 
-func (repo subscriptionsRepo) Retrieve(ctx context.Context, ownerID, topic string) (notify.Subscription, error) {
-	q := `SELECT id, owner_id, contact, topic subscriptions WHERE owner_id = $1 AND topic = $2`
+func (repo subscriptionsRepo) Retrieve(ctx context.Context, id string) (notify.Subscription, error) {
+	q := `SELECT id, owner_id, contact, topic FROM subscriptions WHERE id = $1`
 	sub := dbSubscription{}
-	if err := repo.db.QueryRowxContext(ctx, q, ownerID, topic).StructScan(&sub); err != nil {
+	if err := repo.db.QueryRowxContext(ctx, q, id).StructScan(&sub); err != nil {
 		if err == sql.ErrNoRows {
 			return notify.Subscription{}, errors.Wrap(notify.ErrNotFound, err)
 
@@ -67,9 +69,23 @@ func (repo subscriptionsRepo) Retrieve(ctx context.Context, ownerID, topic strin
 	return fromDBSub(sub), nil
 }
 
-func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, topic string) ([]notify.Subscription, error) {
-	q := `SELECT id, owner_id, contact, topic FROM subscriptions WHERE topic = :topic`
-	args := map[string]interface{}{"topic": topic}
+func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, topic, contact string) ([]notify.Subscription, error) {
+	q := `SELECT id, owner_id, contact, topic FROM subscriptions`
+	args := make(map[string]interface{})
+	if topic != "" {
+		args["topic"] = topic
+	}
+	if contact != "" {
+		args["contact"] = contact
+	}
+	if len(args) > 0 {
+		var cond []string
+		for k := range args {
+			cond = append(cond, fmt.Sprintf("%s = :%s", k, k))
+		}
+		q = fmt.Sprintf("%s WHERE %s", q, strings.Join(cond, " AND "))
+	}
+
 	rows, err := repo.db.NamedQueryContext(ctx, q, args)
 	if err != nil {
 		return []notify.Subscription{}, errors.Wrap(things.ErrSelectEntity, err)
@@ -88,8 +104,8 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, topic string) ([]
 	return ret, nil
 }
 
-func (repo subscriptionsRepo) Remove(ctx context.Context, id, topic string) error {
-	q := `DELETE from subscriptions WHERE owner_id = $1 AND topic = $2`
+func (repo subscriptionsRepo) Remove(ctx context.Context, id string) error {
+	q := `DELETE from subscriptions WHERE id = $1`
 
 	if r := repo.db.QueryRowxContext(ctx, q, id); r.Err() != nil {
 		return errors.Wrap(notify.ErrRemoveEntity, r.Err())

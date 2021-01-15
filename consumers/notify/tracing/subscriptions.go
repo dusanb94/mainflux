@@ -43,28 +43,28 @@ func (urm subRepositoryMiddleware) Save(ctx context.Context, sub notify.Subscrip
 	return urm.repo.Save(ctx, sub)
 }
 
-func (urm subRepositoryMiddleware) Retrieve(ctx context.Context, ownerID, topic string) (notify.Subscription, error) {
+func (urm subRepositoryMiddleware) Retrieve(ctx context.Context, id string) (notify.Subscription, error) {
 	span := createSpan(ctx, urm.tracer, saveOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
-	return urm.repo.Retrieve(ctx, ownerID, topic)
+	return urm.repo.Retrieve(ctx, id)
 }
 
-func (urm subRepositoryMiddleware) RetrieveAll(ctx context.Context, topic string) ([]notify.Subscription, error) {
+func (urm subRepositoryMiddleware) RetrieveAll(ctx context.Context, topic, contact string) ([]notify.Subscription, error) {
 	span := createSpan(ctx, urm.tracer, retrieveByEmailOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
-	return urm.repo.RetrieveAll(ctx, topic)
+	return urm.repo.RetrieveAll(ctx, topic, contact)
 }
 
-func (urm subRepositoryMiddleware) Remove(ctx context.Context, ownerID, topic string) error {
+func (urm subRepositoryMiddleware) Remove(ctx context.Context, id string) error {
 	span := createSpan(ctx, urm.tracer, retrieveByEmailOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
-	return urm.repo.Remove(ctx, ownerID, topic)
+	return urm.repo.Remove(ctx, id)
 }
 
 func createSpan(ctx context.Context, tracer opentracing.Tracer, opName string) opentracing.Span {
