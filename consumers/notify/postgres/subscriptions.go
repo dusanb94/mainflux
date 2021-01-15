@@ -101,6 +101,10 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, topic, contact st
 		ret = append(ret, fromDBSub(sub))
 	}
 
+	if len(ret) == 0 {
+		return ret, notify.ErrNotFound
+	}
+
 	return ret, nil
 }
 

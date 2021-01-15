@@ -14,23 +14,30 @@ type subRepoMock struct {
 	subs map[string]notify.Subscription
 }
 
-// New returns a new Subscriptions repository mock.
-func New(subs map[string]notify.Subscription) notify.SubscriptionsRepository {
-	return subRepoMock{
+// NewRepo returns a new Subscriptions repository mock.
+func NewRepo(subs map[string]notify.Subscription) notify.SubscriptionsRepository {
+	return &subRepoMock{
 		subs: subs,
 	}
 }
 
-func (srm *subRepoMock) Save(ctx context.Context, sub notify.Subscription) (string, error) {
+func (srm *subRepoMock) Save(_ context.Context, sub notify.Subscription) (string, error) {
 	srm.mu.Lock()
 	defer srm.mu.Unlock()
-	if s, ok := srm.subs[sub.ID]; ok || (s.Contact == sub.Contact && s.Topic == sub.Topic) {
+	if _, ok := srm.subs[sub.ID]; ok {
 		return "", notify.ErrConflict
 	}
+	for _, s := range srm.subs {
+		if s.Contact == sub.Contact && s.Topic == sub.Topic {
+			return "", notify.ErrConflict
+		}
+	}
+
+	srm.subs[sub.ID] = sub
 	return sub.ID, nil
 }
 
-func (srm *subRepoMock) Retrieve(ctx context.Context, id string) (notify.Subscription, error) {
+func (srm *subRepoMock) Retrieve(_ context.Context, id string) (notify.Subscription, error) {
 	srm.mu.Lock()
 	defer srm.mu.Unlock()
 	ret, ok := srm.subs[id]
@@ -40,7 +47,7 @@ func (srm *subRepoMock) Retrieve(ctx context.Context, id string) (notify.Subscri
 	return ret, nil
 }
 
-func (srm *subRepoMock) RetrieveAll(ctx context.Context, topic, contact string) ([]notify.Subscription, error) {
+func (srm *subRepoMock) RetrieveAll(_ context.Context, topic, contact string) ([]notify.Subscription, error) {
 	srm.mu.Lock()
 	defer srm.mu.Unlock()
 	var ret []notify.Subscription
@@ -69,7 +76,7 @@ func (srm *subRepoMock) RetrieveAll(ctx context.Context, topic, contact string) 
 	return ret, nil
 }
 
-func (srm *subRepoMock) Remove(ctx context.Context, id string) error {
+func (srm *subRepoMock) Remove(_ context.Context, id string) error {
 	srm.mu.Lock()
 	defer srm.mu.Unlock()
 	delete(srm.subs, id)
