@@ -52,6 +52,8 @@ type listSubsReq struct {
 	token   string
 	topic   string
 	contact string
+	offset  uint
+	limit   uint
 }
 
 func (req listSubsReq) validate() error {

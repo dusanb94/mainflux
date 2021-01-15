@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/mainflux/mainflux/consumers/notify"
 	"github.com/mainflux/mainflux/pkg/errors"
@@ -33,7 +34,10 @@ const (
 	defLimit  = 10
 )
 
-var errMalformedEntity = errors.New("failed to decode request body")
+var (
+	errMalformedEntity    = errors.New("failed to decode request body")
+	errInvalidQueryParams = errors.New("invalid query parameters")
+)
 
 // MakeHandler returns a HTTP handler for API endpoints.
 func MakeHandler(svc notify.Service, tracer opentracing.Tracer) http.Handler {
@@ -45,7 +49,7 @@ func MakeHandler(svc notify.Service, tracer opentracing.Tracer) http.Handler {
 
 	mux.Post("/subscriptions/:topic", kithttp.NewServer(
 		kitot.TraceServer(tracer, "create_subscription")(createSubscriptionEndpoint(svc)),
-		decodeCreateSubscription,
+		decodeCreate,
 		encodeResponse,
 		opts...,
 	))
@@ -59,7 +63,7 @@ func MakeHandler(svc notify.Service, tracer opentracing.Tracer) http.Handler {
 
 	mux.Get("/subscriptions", kithttp.NewServer(
 		kitot.TraceServer(tracer, "list_subscriptions")(listSubscriptionsEndpoint(svc)),
-		decodeListSubscriptions,
+		decodeList,
 		encodeResponse,
 		opts...,
 	))
@@ -77,7 +81,7 @@ func MakeHandler(svc notify.Service, tracer opentracing.Tracer) http.Handler {
 	return mux
 }
 
-func decodeCreateSubscription(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeCreate(_ context.Context, r *http.Request) (interface{}, error) {
 	req := createSubReq{
 		Topic: bone.GetValue(r, "topic"),
 	}
@@ -98,7 +102,7 @@ func decodeSubscription(_ context.Context, r *http.Request) (interface{}, error)
 	return req, nil
 }
 
-func decodeListSubscriptions(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeList(_ context.Context, r *http.Request) (interface{}, error) {
 	req := listSubsReq{
 		token: r.Header.Get("Authorization"),
 	}
@@ -111,9 +115,41 @@ func decodeListSubscriptions(_ context.Context, r *http.Request) (interface{}, e
 	if len(vals) > 0 {
 		req.contact = vals[0]
 	}
+
+	offset, err := readUintQuery(r, "offset", 0)
+	if err != nil {
+		return listSubsReq{}, err
+	}
+	req.offset = offset
+
+	limit, err := readUintQuery(r, "limit", 10)
+	if err != nil {
+		return listSubsReq{}, err
+	}
+	req.limit = limit
+
 	return req, nil
 }
 
+func readUintQuery(r *http.Request, key string, def uint) (uint, error) {
+	vals := bone.GetQuery(r, key)
+	if len(vals) > 1 {
+		return 0, errInvalidQueryParams
+	}
+
+	if len(vals) == 0 {
+		return def, nil
+	}
+
+	strval := vals[0]
+	val, err := strconv.ParseUint(strval, 10, 64)
+	if err != nil {
+		return 0, errInvalidQueryParams
+	}
+
+	return uint(val), nil
+
+}
 func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
 	if ar, ok := response.(mainflux.Response); ok {
 		for k, v := range ar.Headers() {

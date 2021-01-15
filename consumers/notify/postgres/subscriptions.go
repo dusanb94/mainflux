@@ -69,14 +69,14 @@ func (repo subscriptionsRepo) Retrieve(ctx context.Context, id string) (notify.S
 	return fromDBSub(sub), nil
 }
 
-func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, topic, contact string) ([]notify.Subscription, error) {
+func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMetadata) ([]notify.Subscription, error) {
 	q := `SELECT id, owner_id, contact, topic FROM subscriptions`
-	args := make(map[string]interface{})
-	if topic != "" {
-		args["topic"] = topic
+	args := map[string]interface{}{"offset": pm.Offset}
+	if pm.Topic != "" {
+		args["topic"] = pm.Topic
 	}
-	if contact != "" {
-		args["contact"] = contact
+	if pm.Contact != "" {
+		args["contact"] = pm.Contact
 	}
 	if len(args) > 0 {
 		var cond []string
@@ -84,6 +84,11 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, topic, contact st
 			cond = append(cond, fmt.Sprintf("%s = :%s", k, k))
 		}
 		q = fmt.Sprintf("%s WHERE %s", q, strings.Join(cond, " AND "))
+	}
+	q = fmt.Sprintf("%s OFFSET :offset", q)
+	if pm.Limit > 0 {
+		q = fmt.Sprintf("%s LIMIT :limit", q)
+		args["limit"] = pm.Limit
 	}
 
 	rows, err := repo.db.NamedQueryContext(ctx, q, args)

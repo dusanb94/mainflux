@@ -51,12 +51,12 @@ func (urm subRepositoryMiddleware) Retrieve(ctx context.Context, id string) (not
 	return urm.repo.Retrieve(ctx, id)
 }
 
-func (urm subRepositoryMiddleware) RetrieveAll(ctx context.Context, topic, contact string) ([]notify.Subscription, error) {
+func (urm subRepositoryMiddleware) RetrieveAll(ctx context.Context, pm notify.PageMetadata) ([]notify.Subscription, error) {
 	span := createSpan(ctx, urm.tracer, retrieveByEmailOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
-	return urm.repo.RetrieveAll(ctx, topic, contact)
+	return urm.repo.RetrieveAll(ctx, pm)
 }
 
 func (urm subRepositoryMiddleware) Remove(ctx context.Context, id string) error {

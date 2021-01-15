@@ -48,7 +48,7 @@ type Service interface {
 	ViewSubscription(ctx context.Context, token, id string) (Subscription, error)
 
 	// ListSubscriptions lists subscriptions having the provided user token and search params.
-	ListSubscriptions(ctx context.Context, token, topic, contact string) ([]Subscription, error)
+	ListSubscriptions(ctx context.Context, token string, pm PageMetadata) ([]Subscription, error)
 
 	// RemoveSubscription removes the subscription having the provided identifier.
 	RemoveSubscription(ctx context.Context, token, id string) error
@@ -99,13 +99,13 @@ func (ns *notifierService) ViewSubscription(ctx context.Context, token, id strin
 	return ns.subs.Retrieve(ctx, id)
 }
 
-func (ns *notifierService) ListSubscriptions(ctx context.Context, token, topic, contact string) ([]Subscription, error) {
+func (ns *notifierService) ListSubscriptions(ctx context.Context, token string, pm PageMetadata) ([]Subscription, error) {
 	_, err := ns.auth.Identify(ctx, &mainflux.Token{Value: token})
 	if err != nil {
 		return nil, errors.Wrap(ErrUnauthorizedAccess, err)
 	}
 
-	return ns.subs.RetrieveAll(ctx, topic, contact)
+	return ns.subs.RetrieveAll(ctx, pm)
 }
 
 func (ns *notifierService) RemoveSubscription(ctx context.Context, token, id string) error {
@@ -126,7 +126,12 @@ func (ns *notifierService) Consume(message interface{}) error {
 	if msg.Subtopic != "" {
 		topic = fmt.Sprintf("%s.%s", msg.Channel, msg.Subtopic)
 	}
-	subs, err := ns.subs.RetrieveAll(context.Background(), topic, "")
+	pm := PageMetadata{
+		Topic:  topic,
+		Offset: 0,
+		Limit:  -1,
+	}
+	subs, err := ns.subs.RetrieveAll(context.Background(), pm)
 	if err != nil {
 		return err
 	}

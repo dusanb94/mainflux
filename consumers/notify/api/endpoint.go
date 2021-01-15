@@ -58,7 +58,13 @@ func listSubscriptionsEndpoint(svc notify.Service) endpoint.Endpoint {
 		if err := req.validate(); err != nil {
 			return listSubsRes{}, err
 		}
-		subs, err := svc.ListSubscriptions(ctx, req.token, req.topic, req.contact)
+		pm := notify.PageMetadata{
+			Topic:   req.topic,
+			Contact: req.contact,
+			Offset:  req.offset,
+			Limit:   int(req.limit),
+		}
+		subs, err := svc.ListSubscriptions(ctx, req.token, pm)
 		if err != nil {
 			return listSubsRes{}, err
 		}

@@ -47,25 +47,42 @@ func (srm *subRepoMock) Retrieve(_ context.Context, id string) (notify.Subscript
 	return ret, nil
 }
 
-func (srm *subRepoMock) RetrieveAll(_ context.Context, topic, contact string) ([]notify.Subscription, error) {
+func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) ([]notify.Subscription, error) {
 	srm.mu.Lock()
 	defer srm.mu.Unlock()
 	var ret []notify.Subscription
+	var ind int
+	offset := int(pm.Offset)
 	for _, v := range srm.subs {
-		if topic == "" {
-			if contact == "" {
+		if pm.Topic == "" {
+			if pm.Contact == "" {
+				if ind < offset {
+					ind++
+					continue
+				}
 				ret = append(ret, v)
 				continue
 			}
-			if contact == v.Contact {
+			if pm.Contact == v.Contact {
+				if ind < offset {
+					ind++
+					continue
+				}
 				ret = append(ret, v)
 				continue
 			}
 		}
-		if topic == v.Topic {
-			if contact == "" || contact == v.Contact {
+		if pm.Topic == v.Topic {
+			if pm.Contact == "" || pm.Contact == v.Contact {
+				if ind < offset {
+					ind++
+					continue
+				}
 				ret = append(ret, v)
 			}
+		}
+		if len(ret) == int(pm.Limit) {
+			break
 		}
 	}
 

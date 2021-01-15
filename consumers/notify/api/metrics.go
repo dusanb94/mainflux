@@ -46,13 +46,13 @@ func (ms *metricsMiddleware) ViewSubscription(ctx context.Context, token, topic 
 	return ms.svc.ViewSubscription(ctx, token, topic)
 }
 
-func (ms *metricsMiddleware) ListSubscriptions(ctx context.Context, token, topic, contact string) ([]notify.Subscription, error) {
+func (ms *metricsMiddleware) ListSubscriptions(ctx context.Context, token string, pm notify.PageMetadata) ([]notify.Subscription, error) {
 	defer func(begin time.Time) {
 		ms.counter.With("method", "list_subscriptions").Add(1)
 		ms.latency.With("method", "list_subscriptions").Observe(time.Since(begin).Seconds())
 	}(time.Now())
 
-	return ms.svc.ListSubscriptions(ctx, token, topic, contact)
+	return ms.svc.ListSubscriptions(ctx, token, pm)
 }
 
 func (ms *metricsMiddleware) RemoveSubscription(ctx context.Context, token, id string) error {
