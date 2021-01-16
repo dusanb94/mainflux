@@ -71,7 +71,7 @@ func (repo subscriptionsRepo) Retrieve(ctx context.Context, id string) (notify.S
 
 func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMetadata) (notify.SubscriptionPage, error) {
 	q := `SELECT id, owner_id, contact, topic FROM subscriptions`
-	args := map[string]interface{}{"offset": pm.Offset}
+	args := make(map[string]interface{})
 	if pm.Topic != "" {
 		args["topic"] = pm.Topic
 	}
@@ -87,7 +87,7 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMet
 		condition = fmt.Sprintf(" WHERE %s", strings.Join(cond, " AND "))
 		q = fmt.Sprintf("%s%s", q, condition)
 	}
-
+	args["offset"] = pm.Offset
 	q = fmt.Sprintf("%s OFFSET :offset", q)
 	if pm.Limit > 0 {
 		q = fmt.Sprintf("%s LIMIT :limit", q)
@@ -113,7 +113,7 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMet
 		return notify.SubscriptionPage{}, notify.ErrNotFound
 	}
 
-	cq := fmt.Sprintf(`SELECT COUNT(*) FROM subscription %s;`, condition)
+	cq := fmt.Sprintf(`SELECT COUNT(*) FROM subscriptions %s`, condition)
 	total, err := total(ctx, repo.db, cq, args)
 	if err != nil {
 		return notify.SubscriptionPage{}, errors.Wrap(things.ErrSelectEntity, err)

@@ -55,8 +55,8 @@ func (res viewSubRes) Empty() bool {
 }
 
 type listSubsRes struct {
-	Offset        uint         `json:"offset,omitempty"`
-	Limit         int          `json:"limit,omitempty"`
+	Offset        uint         `json:"offset"`
+	Limit         int          `json:"limit"`
 	Total         uint         `json:"total,omitempty"`
 	Subscriptions []viewSubRes `json:"subscriptions,omitempty"`
 }
