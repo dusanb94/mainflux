@@ -69,7 +69,7 @@ func (repo subscriptionsRepo) Retrieve(ctx context.Context, id string) (notify.S
 	return fromDBSub(sub), nil
 }
 
-func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMetadata) ([]notify.Subscription, error) {
+func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMetadata) (notify.SubscriptionPage, error) {
 	q := `SELECT id, owner_id, contact, topic FROM subscriptions`
 	args := map[string]interface{}{"offset": pm.Offset}
 	if pm.Topic != "" {
@@ -78,13 +78,16 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMet
 	if pm.Contact != "" {
 		args["contact"] = pm.Contact
 	}
+	var condition string
 	if len(args) > 0 {
 		var cond []string
 		for k := range args {
 			cond = append(cond, fmt.Sprintf("%s = :%s", k, k))
 		}
-		q = fmt.Sprintf("%s WHERE %s", q, strings.Join(cond, " AND "))
+		condition = fmt.Sprintf(" WHERE %s", strings.Join(cond, " AND "))
+		q = fmt.Sprintf("%s%s", q, condition)
 	}
+
 	q = fmt.Sprintf("%s OFFSET :offset", q)
 	if pm.Limit > 0 {
 		q = fmt.Sprintf("%s LIMIT :limit", q)
@@ -93,21 +96,33 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMet
 
 	rows, err := repo.db.NamedQueryContext(ctx, q, args)
 	if err != nil {
-		return []notify.Subscription{}, errors.Wrap(things.ErrSelectEntity, err)
+		return notify.SubscriptionPage{}, errors.Wrap(things.ErrSelectEntity, err)
 	}
 	defer rows.Close()
 
-	ret := []notify.Subscription{}
+	subs := []notify.Subscription{}
 	for rows.Next() {
 		sub := dbSubscription{}
 		if err := rows.StructScan(&sub); err != nil {
-			return []notify.Subscription{}, errors.Wrap(notify.ErrSelectEntity, err)
+			return notify.SubscriptionPage{}, errors.Wrap(notify.ErrSelectEntity, err)
 		}
-		ret = append(ret, fromDBSub(sub))
+		subs = append(subs, fromDBSub(sub))
 	}
 
-	if len(ret) == 0 {
-		return ret, notify.ErrNotFound
+	if len(subs) == 0 {
+		return notify.SubscriptionPage{}, notify.ErrNotFound
+	}
+
+	cq := fmt.Sprintf(`SELECT COUNT(*) FROM subscription %s;`, condition)
+	total, err := total(ctx, repo.db, cq, args)
+	if err != nil {
+		return notify.SubscriptionPage{}, errors.Wrap(things.ErrSelectEntity, err)
+	}
+
+	ret := notify.SubscriptionPage{
+		PageMetadata:  pm,
+		Total:         total,
+		Subscriptions: subs,
 	}
 
 	return ret, nil
@@ -120,6 +135,21 @@ func (repo subscriptionsRepo) Remove(ctx context.Context, id string) error {
 		return errors.Wrap(notify.ErrRemoveEntity, r.Err())
 	}
 	return nil
+}
+
+func total(ctx context.Context, db Database, query string, params interface{}) (uint, error) {
+	rows, err := db.NamedQueryContext(ctx, query, params)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	var total uint
+	if rows.Next() {
+		if err := rows.Scan(&total); err != nil {
+			return 0, err
+		}
+	}
+	return total, nil
 }
 
 type dbSubscription struct {

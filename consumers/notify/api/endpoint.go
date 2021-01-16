@@ -64,19 +64,23 @@ func listSubscriptionsEndpoint(svc notify.Service) endpoint.Endpoint {
 			Offset:  req.offset,
 			Limit:   int(req.limit),
 		}
-		subs, err := svc.ListSubscriptions(ctx, req.token, pm)
+		page, err := svc.ListSubscriptions(ctx, req.token, pm)
 		if err != nil {
 			return listSubsRes{}, err
 		}
-		var res listSubsRes
-		for _, sub := range subs {
+		res := listSubsRes{
+			Offset: page.Offset,
+			Limit:  page.Limit,
+			Total:  page.Total,
+		}
+		for _, sub := range page.Subscriptions {
 			r := viewSubRes{
 				ID:      sub.ID,
 				OwnerID: sub.OwnerID,
 				Contact: sub.Contact,
 				Topic:   sub.Topic,
 			}
-			res.Data = append(res.Data, r)
+			res.Subscriptions = append(res.Subscriptions, r)
 		}
 		return res, nil
 	}

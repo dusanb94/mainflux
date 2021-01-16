@@ -48,7 +48,7 @@ type Service interface {
 	ViewSubscription(ctx context.Context, token, id string) (Subscription, error)
 
 	// ListSubscriptions lists subscriptions having the provided user token and search params.
-	ListSubscriptions(ctx context.Context, token string, pm PageMetadata) ([]Subscription, error)
+	ListSubscriptions(ctx context.Context, token string, pm PageMetadata) (SubscriptionPage, error)
 
 	// RemoveSubscription removes the subscription having the provided identifier.
 	RemoveSubscription(ctx context.Context, token, id string) error
@@ -99,10 +99,10 @@ func (ns *notifierService) ViewSubscription(ctx context.Context, token, id strin
 	return ns.subs.Retrieve(ctx, id)
 }
 
-func (ns *notifierService) ListSubscriptions(ctx context.Context, token string, pm PageMetadata) ([]Subscription, error) {
+func (ns *notifierService) ListSubscriptions(ctx context.Context, token string, pm PageMetadata) (SubscriptionPage, error) {
 	_, err := ns.auth.Identify(ctx, &mainflux.Token{Value: token})
 	if err != nil {
-		return nil, errors.Wrap(ErrUnauthorizedAccess, err)
+		return SubscriptionPage{}, errors.Wrap(ErrUnauthorizedAccess, err)
 	}
 
 	return ns.subs.RetrieveAll(ctx, pm)
@@ -131,13 +131,13 @@ func (ns *notifierService) Consume(message interface{}) error {
 		Offset: 0,
 		Limit:  -1,
 	}
-	subs, err := ns.subs.RetrieveAll(context.Background(), pm)
+	page, err := ns.subs.RetrieveAll(context.Background(), pm)
 	if err != nil {
 		return err
 	}
 
 	var to []string
-	for _, sub := range subs {
+	for _, sub := range page.Subscriptions {
 		to = append(to, sub.Contact)
 	}
 	if len(to) > 0 {

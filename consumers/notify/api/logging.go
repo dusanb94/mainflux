@@ -50,7 +50,7 @@ func (lm *loggingMiddleware) ViewSubscription(ctx context.Context, token, topic 
 	return lm.svc.ViewSubscription(ctx, token, topic)
 }
 
-func (lm *loggingMiddleware) ListSubscriptions(ctx context.Context, token string, pm notify.PageMetadata) (res []notify.Subscription, err error) {
+func (lm *loggingMiddleware) ListSubscriptions(ctx context.Context, token string, pm notify.PageMetadata) (res notify.SubscriptionPage, err error) {
 	defer func(begin time.Time) {
 		message := fmt.Sprintf("Method list_subscription for topic %s and token %s took %s to complete", pm.Topic, token, time.Since(begin))
 		if err != nil {

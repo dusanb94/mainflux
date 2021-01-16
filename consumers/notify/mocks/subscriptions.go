@@ -47,10 +47,10 @@ func (srm *subRepoMock) Retrieve(_ context.Context, id string) (notify.Subscript
 	return ret, nil
 }
 
-func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) ([]notify.Subscription, error) {
+func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) (notify.SubscriptionPage, error) {
 	srm.mu.Lock()
 	defer srm.mu.Unlock()
-	var ret []notify.Subscription
+	var subs []notify.Subscription
 	var ind int
 	offset := int(pm.Offset)
 	for _, v := range srm.subs {
@@ -60,7 +60,8 @@ func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) (
 					ind++
 					continue
 				}
-				ret = append(ret, v)
+				ind++
+				subs = append(subs, v)
 				continue
 			}
 			if pm.Contact == v.Contact {
@@ -68,7 +69,7 @@ func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) (
 					ind++
 					continue
 				}
-				ret = append(ret, v)
+				subs = append(subs, v)
 				continue
 			}
 		}
@@ -78,16 +79,22 @@ func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) (
 					ind++
 					continue
 				}
-				ret = append(ret, v)
+				subs = append(subs, v)
 			}
 		}
-		if len(ret) == int(pm.Limit) {
+		if len(subs) == int(pm.Limit) {
 			break
 		}
 	}
 
-	if len(ret) == 0 {
-		return ret, notify.ErrNotFound
+	if len(subs) == 0 {
+		return notify.SubscriptionPage{}, notify.ErrNotFound
+	}
+
+	ret := notify.SubscriptionPage{
+		PageMetadata:  pm,
+		Total:         uint(ind),
+		Subscriptions: subs,
 	}
 
 	return ret, nil
