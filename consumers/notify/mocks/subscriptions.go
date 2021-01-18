@@ -47,7 +47,7 @@ func (srm *subRepoMock) Retrieve(_ context.Context, id string) (notify.Subscript
 	return ret, nil
 }
 
-func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) (notify.SubscriptionPage, error) {
+func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) (notify.Page, error) {
 	srm.mu.Lock()
 	defer srm.mu.Unlock()
 	var subs []notify.Subscription
@@ -88,10 +88,10 @@ func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) (
 	}
 
 	if len(subs) == 0 {
-		return notify.SubscriptionPage{}, notify.ErrNotFound
+		return notify.Page{}, notify.ErrNotFound
 	}
 
-	ret := notify.SubscriptionPage{
+	ret := notify.Page{
 		PageMetadata:  pm,
 		Total:         uint(ind),
 		Subscriptions: subs,

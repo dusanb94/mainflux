@@ -48,7 +48,7 @@ type Service interface {
 	ViewSubscription(ctx context.Context, token, id string) (Subscription, error)
 
 	// ListSubscriptions lists subscriptions having the provided user token and search params.
-	ListSubscriptions(ctx context.Context, token string, pm PageMetadata) (SubscriptionPage, error)
+	ListSubscriptions(ctx context.Context, token string, pm PageMetadata) (Page, error)
 
 	// RemoveSubscription removes the subscription having the provided identifier.
 	RemoveSubscription(ctx context.Context, token, id string) error
@@ -99,10 +99,10 @@ func (ns *notifierService) ViewSubscription(ctx context.Context, token, id strin
 	return ns.subs.Retrieve(ctx, id)
 }
 
-func (ns *notifierService) ListSubscriptions(ctx context.Context, token string, pm PageMetadata) (SubscriptionPage, error) {
+func (ns *notifierService) ListSubscriptions(ctx context.Context, token string, pm PageMetadata) (Page, error) {
 	_, err := ns.auth.Identify(ctx, &mainflux.Token{Value: token})
 	if err != nil {
-		return SubscriptionPage{}, errors.Wrap(ErrUnauthorizedAccess, err)
+		return Page{}, errors.Wrap(ErrUnauthorizedAccess, err)
 	}
 
 	return ns.subs.RetrieveAll(ctx, pm)

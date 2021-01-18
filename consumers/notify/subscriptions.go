@@ -13,8 +13,8 @@ type Subscription struct {
 	Topic   string
 }
 
-// SubscriptionPage represents page metadata with content.
-type SubscriptionPage struct {
+// Page represents page metadata with content.
+type Page struct {
 	PageMetadata
 	Total         uint
 	Subscriptions []Subscription
@@ -39,7 +39,7 @@ type SubscriptionsRepository interface {
 	Retrieve(ctx context.Context, id string) (Subscription, error)
 
 	// RetrieveAll retrieves all the subscriptions for the given metadata.
-	RetrieveAll(ctx context.Context, pm PageMetadata) (SubscriptionPage, error)
+	RetrieveAll(ctx context.Context, pm PageMetadata) (Page, error)
 
 	// Remove removes the subscription having the provided an ID.
 	Remove(ctx context.Context, id string) error

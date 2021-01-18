@@ -69,7 +69,7 @@ func (repo subscriptionsRepo) Retrieve(ctx context.Context, id string) (notify.S
 	return fromDBSub(sub), nil
 }
 
-func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMetadata) (notify.SubscriptionPage, error) {
+func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMetadata) (notify.Page, error) {
 	q := `SELECT id, owner_id, contact, topic FROM subscriptions`
 	args := make(map[string]interface{})
 	if pm.Topic != "" {
@@ -96,7 +96,7 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMet
 
 	rows, err := repo.db.NamedQueryContext(ctx, q, args)
 	if err != nil {
-		return notify.SubscriptionPage{}, errors.Wrap(things.ErrSelectEntity, err)
+		return notify.Page{}, errors.Wrap(things.ErrSelectEntity, err)
 	}
 	defer rows.Close()
 
@@ -104,22 +104,22 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMet
 	for rows.Next() {
 		sub := dbSubscription{}
 		if err := rows.StructScan(&sub); err != nil {
-			return notify.SubscriptionPage{}, errors.Wrap(notify.ErrSelectEntity, err)
+			return notify.Page{}, errors.Wrap(notify.ErrSelectEntity, err)
 		}
 		subs = append(subs, fromDBSub(sub))
 	}
 
 	if len(subs) == 0 {
-		return notify.SubscriptionPage{}, notify.ErrNotFound
+		return notify.Page{}, notify.ErrNotFound
 	}
 
 	cq := fmt.Sprintf(`SELECT COUNT(*) FROM subscriptions %s`, condition)
 	total, err := total(ctx, repo.db, cq, args)
 	if err != nil {
-		return notify.SubscriptionPage{}, errors.Wrap(things.ErrSelectEntity, err)
+		return notify.Page{}, errors.Wrap(things.ErrSelectEntity, err)
 	}
 
-	ret := notify.SubscriptionPage{
+	ret := notify.Page{
 		PageMetadata:  pm,
 		Total:         total,
 		Subscriptions: subs,

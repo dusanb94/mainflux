@@ -122,77 +122,74 @@ func TestListSubscriptions(t *testing.T) {
 	}
 
 	cases := map[string]struct {
-		token   string
-		id      string
-		topic   string
-		contact string
-		subs    []notify.Subscription
-		err     error
+		token    string
+		pageMeta notify.PageMetadata
+		page     notify.Page
+		err      error
 	}{
 		"test success": {
 			token: exampleUser1,
-			id:    id,
-			sub:   sub,
 			err:   nil,
 		},
 		"test not existing": {
 			token: exampleUser1,
-			id:    "not_exist",
-			sub:   notify.Subscription{},
 			err:   notify.ErrNotFound,
 		},
 		"test unauthorized access": {
 			token: "",
-			id:    id,
-			sub:   notify.Subscription{},
-			err:   notify.ErrUnauthorizedAccess,
+			pageMeta: notify.PageMetadata{
+				Offset: 2,
+				Limit:  12,
+				Topic:  "topic.subtopic.13",
+			},
+			err: notify.ErrUnauthorizedAccess,
 		},
 	}
 
 	for desc, tc := range cases {
-		sub, err := svc.ListSubscriptions(context.Background(), tc.token, tc.topic, tc.contact)
+		page, err := svc.ListSubscriptions(context.Background(), tc.token, tc.pageMeta)
 		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
-		assert.Equal(t, tc.sub, sub, fmt.Sprintf("%s: expected %v got %v\n", desc, tc.sub, sub))
+		assert.Equal(t, tc.page, sub, fmt.Sprintf("%s: expected %v got %v\n", desc, tc.page, page))
 	}
 }
 
 func TestRemoveSubscription(t *testing.T) {
-	svc := newService()
-	sub := notify.Subscription{Contact: exampleUser1, Topic: "valid.topic"}
-	id, err := svc.CreateSubscription(context.Background(), exampleUser1, sub)
-	require.Nil(t, err, fmt.Sprintf("Saving a Subscription must succeed"))
-	sub.ID = id
-	sub.OwnerID = exampleUser1
+	// svc := newService()
+	// sub := notify.Subscription{Contact: exampleUser1, Topic: "valid.topic"}
+	// id, err := svc.CreateSubscription(context.Background(), exampleUser1, sub)
+	// require.Nil(t, err, fmt.Sprintf("Saving a Subscription must succeed"))
+	// sub.ID = id
+	// sub.OwnerID = exampleUser1
 
-	cases := map[string]struct {
-		token string
-		id    string
-		sub   notify.Subscription
-		err   error
-	}{
-		"test success": {
-			token: exampleUser1,
-			id:    id,
-			sub:   sub,
-			err:   nil,
-		},
-		"test not existing": {
-			token: exampleUser1,
-			id:    "not_exist",
-			sub:   notify.Subscription{},
-			err:   notify.ErrNotFound,
-		},
-		"test unauthorized access": {
-			token: "",
-			id:    id,
-			sub:   notify.Subscription{},
-			err:   notify.ErrUnauthorizedAccess,
-		},
-	}
+	// cases := map[string]struct {
+	// 	token string
+	// 	id    string
+	// 	sub   notify.Subscription
+	// 	err   error
+	// }{
+	// 	"test success": {
+	// 		token: exampleUser1,
+	// 		id:    id,
+	// 		sub:   sub,
+	// 		err:   nil,
+	// 	},
+	// 	"test not existing": {
+	// 		token: exampleUser1,
+	// 		id:    "not_exist",
+	// 		sub:   notify.Subscription{},
+	// 		err:   notify.ErrNotFound,
+	// 	},
+	// 	"test unauthorized access": {
+	// 		token: "",
+	// 		id:    id,
+	// 		sub:   notify.Subscription{},
+	// 		err:   notify.ErrUnauthorizedAccess,
+	// 	},
+	// }
 
-	for desc, tc := range cases {
-		sub, err := svc.RemoveSubscription(context.Background(), tc.token, tc.id)
-		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
-		assert.Equal(t, tc.sub, sub, fmt.Sprintf("%s: expected %v got %v\n", desc, tc.sub, sub))
-	}
+	// for desc, tc := range cases {
+	// 	sub, err := svc.RemoveSubscription(context.Background(), tc.token, tc.id)
+	// 	assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
+	// 	assert.Equal(t, tc.sub, sub, fmt.Sprintf("%s: expected %v got %v\n", desc, tc.sub, sub))
+	// }
 }
