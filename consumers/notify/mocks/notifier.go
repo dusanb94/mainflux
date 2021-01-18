@@ -7,6 +7,8 @@ import (
 
 var _ notify.Notifier = (*notifier)(nil)
 
+const invalidSender = "invalid@example.com"
+
 type notifier struct{}
 
 // NewNotifier returns a new Notifier mock.
@@ -15,5 +17,10 @@ func NewNotifier() notify.Notifier {
 }
 
 func (n notifier) Notify(from string, to []string, msg messaging.Message) error {
+	for _, t := range to {
+		if t == invalidSender {
+			return notify.ErrNotify
+		}
+	}
 	return nil
 }

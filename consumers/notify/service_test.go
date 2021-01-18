@@ -3,12 +3,12 @@ package notify_test
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/mainflux/mainflux/consumers/notify"
 	"github.com/mainflux/mainflux/consumers/notify/mocks"
 	"github.com/mainflux/mainflux/pkg/errors"
+	"github.com/mainflux/mainflux/pkg/messaging"
 	"github.com/mainflux/mainflux/pkg/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,11 +17,12 @@ import (
 const (
 	exampleUser1 = "email1@example.com"
 	exampleUser2 = "email2@example.com"
+	invalidUser  = "invalid@example.com"
 )
 
 func newService() notify.Service {
 	repo := mocks.NewRepo(make(map[string]notify.Subscription))
-	auth := mocks.NewAuth(map[string]string{exampleUser1: exampleUser1})
+	auth := mocks.NewAuth(map[string]string{exampleUser1: exampleUser1, exampleUser2: exampleUser2, invalidUser: invalidUser})
 	notifier := mocks.NewNotifier()
 	idp := uuid.NewMock()
 	return notify.New(auth, repo, idp, notifier)
@@ -106,19 +107,28 @@ func TestViewSubscription(t *testing.T) {
 
 func TestListSubscriptions(t *testing.T) {
 	svc := newService()
-	sub := notify.Subscription{Contact: exampleUser1}
+	const total = 100
+	sub := notify.Subscription{Contact: exampleUser1, OwnerID: exampleUser1}
 	topic := "topic.subtopic"
 	var subs []notify.Subscription
-	for i := 0; i < 100; i++ {
+	for i := 0; i < total; i++ {
+		tmp := sub
 		token := exampleUser1
 		if i%2 == 0 {
+			tmp.Contact = exampleUser2
+			tmp.OwnerID = exampleUser2
 			token = exampleUser2
 		}
-		sub.Topic = fmt.Sprintf("%s.%s", topic, strconv.Itoa(i))
-		id, err := svc.CreateSubscription(context.Background(), token, sub)
+		tmp.Topic = fmt.Sprintf("%s.%d", topic, i)
+		id, err := svc.CreateSubscription(context.Background(), token, tmp)
 		require.Nil(t, err, fmt.Sprintf("Saving a Subscription must succeed"))
-		sub.ID = id
-		subs = append(subs, sub)
+		tmp.ID = id
+		subs = append(subs, tmp)
+	}
+
+	var offsetSubs []notify.Subscription
+	for i := 20; i < 40; i += 2 {
+		offsetSubs = append(offsetSubs, subs[i])
 	}
 
 	cases := map[string]struct {
@@ -129,11 +139,28 @@ func TestListSubscriptions(t *testing.T) {
 	}{
 		"test success": {
 			token: exampleUser1,
-			err:   nil,
+			pageMeta: notify.PageMetadata{
+				Offset: 0,
+				Limit:  3,
+			},
+			err: nil,
+			page: notify.Page{
+				PageMetadata: notify.PageMetadata{
+					Offset: 0,
+					Limit:  3,
+				},
+				Subscriptions: subs[:3],
+				Total:         total,
+			},
 		},
 		"test not existing": {
 			token: exampleUser1,
-			err:   notify.ErrNotFound,
+			pageMeta: notify.PageMetadata{
+				Limit:   10,
+				Contact: "empty@example.com",
+			},
+			page: notify.Page{},
+			err:  notify.ErrNotFound,
 		},
 		"test unauthorized access": {
 			token: "",
@@ -142,54 +169,135 @@ func TestListSubscriptions(t *testing.T) {
 				Limit:  12,
 				Topic:  "topic.subtopic.13",
 			},
-			err: notify.ErrUnauthorizedAccess,
+			page: notify.Page{},
+			err:  notify.ErrUnauthorizedAccess,
+		},
+		"test with topic": {
+			token: exampleUser1,
+			pageMeta: notify.PageMetadata{
+				Limit: 10,
+				Topic: fmt.Sprintf("%s.%d", topic, 4),
+			},
+			page: notify.Page{
+				PageMetadata: notify.PageMetadata{
+					Limit: 10,
+					Topic: fmt.Sprintf("%s.%d", topic, 4),
+				},
+				Subscriptions: subs[4:5],
+				Total:         1,
+			},
+			err: nil,
+		},
+		"test with contact and offset": {
+			token: exampleUser1,
+			pageMeta: notify.PageMetadata{
+				Offset:  10,
+				Limit:   10,
+				Contact: exampleUser2,
+			},
+			page: notify.Page{
+				PageMetadata: notify.PageMetadata{
+					Offset:  10,
+					Limit:   10,
+					Contact: exampleUser2,
+				},
+				Subscriptions: offsetSubs,
+				Total:         uint(total / 2),
+			},
+			err: nil,
 		},
 	}
 
 	for desc, tc := range cases {
 		page, err := svc.ListSubscriptions(context.Background(), tc.token, tc.pageMeta)
 		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
-		assert.Equal(t, tc.page, sub, fmt.Sprintf("%s: expected %v got %v\n", desc, tc.page, page))
+		assert.Equal(t, tc.page, page, fmt.Sprintf("%s: expected %v got %v\n", desc, tc.page, page))
 	}
 }
 
 func TestRemoveSubscription(t *testing.T) {
-	// svc := newService()
-	// sub := notify.Subscription{Contact: exampleUser1, Topic: "valid.topic"}
-	// id, err := svc.CreateSubscription(context.Background(), exampleUser1, sub)
-	// require.Nil(t, err, fmt.Sprintf("Saving a Subscription must succeed"))
-	// sub.ID = id
-	// sub.OwnerID = exampleUser1
+	svc := newService()
+	sub := notify.Subscription{Contact: exampleUser1, Topic: "valid.topic"}
+	id, err := svc.CreateSubscription(context.Background(), exampleUser1, sub)
+	require.Nil(t, err, fmt.Sprintf("Saving a Subscription must succeed"))
+	sub.ID = id
+	sub.OwnerID = exampleUser1
 
-	// cases := map[string]struct {
-	// 	token string
-	// 	id    string
-	// 	sub   notify.Subscription
-	// 	err   error
-	// }{
-	// 	"test success": {
-	// 		token: exampleUser1,
-	// 		id:    id,
-	// 		sub:   sub,
-	// 		err:   nil,
-	// 	},
-	// 	"test not existing": {
-	// 		token: exampleUser1,
-	// 		id:    "not_exist",
-	// 		sub:   notify.Subscription{},
-	// 		err:   notify.ErrNotFound,
-	// 	},
-	// 	"test unauthorized access": {
-	// 		token: "",
-	// 		id:    id,
-	// 		sub:   notify.Subscription{},
-	// 		err:   notify.ErrUnauthorizedAccess,
-	// 	},
-	// }
+	cases := map[string]struct {
+		token string
+		id    string
+		err   error
+	}{
+		"test success": {
+			token: exampleUser1,
+			id:    id,
+			err:   nil,
+		},
+		"test not existing": {
+			token: exampleUser1,
+			id:    "not_exist",
+			err:   nil,
+		},
+		"test unauthorized access": {
+			token: "",
+			id:    id,
+			err:   notify.ErrUnauthorizedAccess,
+		},
+	}
 
-	// for desc, tc := range cases {
-	// 	sub, err := svc.RemoveSubscription(context.Background(), tc.token, tc.id)
-	// 	assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
-	// 	assert.Equal(t, tc.sub, sub, fmt.Sprintf("%s: expected %v got %v\n", desc, tc.sub, sub))
-	// }
+	for desc, tc := range cases {
+		err := svc.RemoveSubscription(context.Background(), tc.token, tc.id)
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
+	}
+}
+
+func TestConsume(t *testing.T) {
+	svc := newService()
+	const total = 100
+	sub := notify.Subscription{
+		Contact: exampleUser1,
+		OwnerID: exampleUser1,
+		Topic:   "topic.subtopic",
+	}
+	for i := 0; i < total; i++ {
+		tmp := sub
+		tmp.Contact = fmt.Sprintf("contact%d@example.com", i)
+		if i%2 == 0 {
+			tmp.Topic = fmt.Sprintf("%s-2", sub.Topic)
+		}
+		_, err := svc.CreateSubscription(context.Background(), exampleUser1, tmp)
+		require.Nil(t, err, fmt.Sprintf("Saving a Subscription must succeed"))
+	}
+
+	sub.Contact = invalidUser
+	sub.Topic = fmt.Sprintf("%s-2", sub.Topic)
+	_, err := svc.CreateSubscription(context.Background(), exampleUser1, sub)
+	require.Nil(t, err, fmt.Sprintf("Saving a Subscription must succeed"))
+
+	msg := messaging.Message{
+		Channel:  "topic",
+		Subtopic: "subtopic",
+	}
+	errMsg := messaging.Message{
+		Channel:  "topic",
+		Subtopic: "subtopic-2",
+	}
+
+	cases := map[string]struct {
+		msg messaging.Message
+		err error
+	}{
+		"test success": {
+			msg: msg,
+		},
+		"test fail": {
+			msg: errMsg,
+			err: notify.ErrNotify,
+		},
+	}
+
+	for desc, tc := range cases {
+		err := svc.Consume(tc.msg)
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
+	}
 }

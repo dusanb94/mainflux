@@ -141,7 +141,10 @@ func (ns *notifierService) Consume(message interface{}) error {
 		to = append(to, sub.Contact)
 	}
 	if len(to) > 0 {
-		return ns.notifier.Notify("", to, msg)
+		err := ns.notifier.Notify("", to, msg)
+		if err != nil {
+			return errors.Wrap(ErrNotify, err)
+		}
 	}
 
 	return nil

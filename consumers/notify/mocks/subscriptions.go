@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/mainflux/mainflux/consumers/notify"
@@ -50,40 +51,48 @@ func (srm *subRepoMock) Retrieve(_ context.Context, id string) (notify.Subscript
 func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) (notify.Page, error) {
 	srm.mu.Lock()
 	defer srm.mu.Unlock()
+
+	// Sort keys
+	keys := make([]string, 0)
+	for k := range srm.subs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
 	var subs []notify.Subscription
-	var ind int
+	var total int
 	offset := int(pm.Offset)
-	for _, v := range srm.subs {
+	for _, k := range keys {
+		v := srm.subs[k]
 		if pm.Topic == "" {
 			if pm.Contact == "" {
-				if ind < offset {
-					ind++
+				if total < offset {
+					total++
 					continue
 				}
-				ind++
-				subs = append(subs, v)
+				total++
+				subs = appendSubs(subs, v, pm.Limit)
 				continue
 			}
 			if pm.Contact == v.Contact {
-				if ind < offset {
-					ind++
+				if total < offset {
+					total++
 					continue
 				}
-				subs = append(subs, v)
+				total++
+				subs = appendSubs(subs, v, pm.Limit)
 				continue
 			}
 		}
 		if pm.Topic == v.Topic {
 			if pm.Contact == "" || pm.Contact == v.Contact {
-				if ind < offset {
-					ind++
+				if total < offset {
+					total++
 					continue
 				}
-				subs = append(subs, v)
+				total++
+				subs = appendSubs(subs, v, pm.Limit)
 			}
-		}
-		if len(subs) == int(pm.Limit) {
-			break
 		}
 	}
 
@@ -93,11 +102,18 @@ func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) (
 
 	ret := notify.Page{
 		PageMetadata:  pm,
-		Total:         uint(ind),
+		Total:         uint(total),
 		Subscriptions: subs,
 	}
 
 	return ret, nil
+}
+
+func appendSubs(subs []notify.Subscription, sub notify.Subscription, max int) []notify.Subscription {
+	if len(subs) < max || max == -1 {
+		subs = append(subs, sub)
+	}
+	return subs
 }
 
 func (srm *subRepoMock) Remove(_ context.Context, id string) error {
