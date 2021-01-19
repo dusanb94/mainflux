@@ -31,21 +31,21 @@ services:
 
   smtp-notify:
     image: mainflux/smtp-notify:latest
-    container_name: mainflux-dmtp-notify
+    container_name: mainflux-smtp-notify
     depends_on:
       - postgres
     restart: on-failure
     environment:
-      MF_SMTP_NOTIFY_LOG_LEVEL: ${MF_THINGS_LOG_LEVEL}
+      MF_SMTP_NOTIFY_LOG_LEVEL: ${MF_SMTP_NOTIFY_LOG_LEVEL}
       MF_SMTP_NOTIFY_DB_HOST: postgres
-      MF_SMTP_NOTIFY_DB_PORT: ${MF_THINGS_DB_PORT}
-      MF_SMTP_NOTIFY_DB_USER: ${MF_THINGS_DB_USER}
-      MF_SMTP_NOTIFY_DB_PASS: ${MF_THINGS_DB_PASS}
-      MF_SMTP_NOTIFY_DB: ${MF_THINGS_DB}
+      MF_SMTP_NOTIFY_DB_PORT: ${MF_SMTP_NOTIFY_DB_PORT}
+      MF_SMTP_NOTIFY_DB_USER: ${MF_SMTP_NOTIFY_DB_USER}
+      MF_SMTP_NOTIFY_DB_PASS: ${MF_SMTP_NOTIFY_DB_PASS}
+      MF_SMTP_NOTIFY_DB: ${MF_SMTP_NOTIFY_DB}
       MF_NATS_URL: ${MF_NATS_URL}
       MF_JAEGER_URL: ${MF_JAEGER_URL}
       MF_AUTH_GRPC_URL: ${MF_AUTH_GRPC_URL}
-      MF_AUTH_GRPC_TIMEOUT: ${MF_AUTH_GRPC_TIMEOUT
+      MF_AUTH_GRPC_TIMEOUT: ${MF_AUTH_GRPC_TIMEOUT}
       MF_EMAIL_USERNAME: ${MF_EMAIL_USERNAME}
       MF_EMAIL_PASSWORD: ${MF_EMAIL_PASSWORD}
       MF_EMAIL_FROM_ADDRESS: ${MF_EMAIL_FROM_ADDRESS}
@@ -57,3 +57,4 @@ services:
       - docker_mainflux-base-net
     volumes:
       - ./config.toml:/config.toml
+      - ./${MF_EMAIL_TEMPLATE}:/${MF_EMAIL_TEMPLATE}
