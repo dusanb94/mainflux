@@ -28,7 +28,7 @@ type Database interface {
 	GetContext(context.Context, interface{}, string, ...interface{}) error
 }
 
-// NewDatabase creates a ThingDatabase instance
+// NewDatabase creates a SubscriptionsDatabase instance
 func NewDatabase(db *sqlx.DB) Database {
 	return &database{
 		db: db,

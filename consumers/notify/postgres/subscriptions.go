@@ -12,7 +12,6 @@ import (
 	"github.com/lib/pq"
 	"github.com/mainflux/mainflux/consumers/notify"
 	"github.com/mainflux/mainflux/pkg/errors"
-	"github.com/mainflux/mainflux/things"
 )
 
 var (
@@ -98,7 +97,7 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMet
 
 	rows, err := repo.db.NamedQueryContext(ctx, q, args)
 	if err != nil {
-		return notify.Page{}, errors.Wrap(things.ErrSelectEntity, err)
+		return notify.Page{}, errors.Wrap(notify.ErrSelectEntity, err)
 	}
 	defer rows.Close()
 
@@ -118,7 +117,7 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMet
 	cq := fmt.Sprintf(`SELECT COUNT(*) FROM subscriptions %s`, condition)
 	total, err := total(ctx, repo.db, cq, args)
 	if err != nil {
-		return notify.Page{}, errors.Wrap(things.ErrSelectEntity, err)
+		return notify.Page{}, errors.Wrap(notify.ErrSelectEntity, err)
 	}
 
 	ret := notify.Page{

@@ -65,7 +65,7 @@ type notifierService struct {
 	notifier Notifier
 }
 
-// New instantiates the things service implementation.
+// New instantiates the subscriptions service implementation.
 func New(auth mainflux.AuthServiceClient, subs SubscriptionsRepository, idp mainflux.IDProvider, notifier Notifier) Service {
 	return &notifierService{
 		auth:     auth,
