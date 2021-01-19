@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/mainflux/mainflux/consumers/notify"
 	"github.com/mainflux/mainflux/pkg/errors"
@@ -35,8 +36,9 @@ const (
 )
 
 var (
-	errMalformedEntity    = errors.New("failed to decode request body")
-	errInvalidQueryParams = errors.New("invalid query parameters")
+	errMalformedEntity        = errors.New("failed to decode request body")
+	errInvalidQueryParams     = errors.New("invalid query parameters")
+	errUnsupportedContentType = errors.New("unsupported content type")
 )
 
 // MakeHandler returns a HTTP handler for API endpoints.
@@ -47,7 +49,7 @@ func MakeHandler(svc notify.Service, tracer opentracing.Tracer) http.Handler {
 
 	mux := bone.New()
 
-	mux.Post("/subscriptions/:topic", kithttp.NewServer(
+	mux.Post("/subscriptions", kithttp.NewServer(
 		kitot.TraceServer(tracer, "create_subscription")(createSubscriptionEndpoint(svc)),
 		decodeCreate,
 		encodeResponse,
@@ -82,9 +84,10 @@ func MakeHandler(svc notify.Service, tracer opentracing.Tracer) http.Handler {
 }
 
 func decodeCreate(_ context.Context, r *http.Request) (interface{}, error) {
-	req := createSubReq{
-		Topic: bone.GetValue(r, "topic"),
+	if !strings.Contains(r.Header.Get("Content-Type"), contentType) {
+		return nil, errUnsupportedContentType
 	}
+	var req createSubReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return nil, errors.Wrap(errMalformedEntity, err)
 	}
@@ -171,7 +174,9 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	case errors.Error:
 		w.Header().Set("Content-Type", contentType)
 		switch {
-		case errors.Contains(errorVal, errMalformedEntity):
+		case errors.Contains(errorVal, errMalformedEntity),
+			errors.Contains(errorVal, errInvalidContact),
+			errors.Contains(errorVal, errInvalidTopic):
 			w.WriteHeader(http.StatusBadRequest)
 		case errors.Contains(errorVal, notify.ErrNotFound):
 			w.WriteHeader(http.StatusNotFound)
@@ -179,6 +184,8 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 			w.WriteHeader(http.StatusUnauthorized)
 		case errors.Contains(errorVal, notify.ErrConflict):
 			w.WriteHeader(http.StatusConflict)
+		case errors.Contains(errorVal, errUnsupportedContentType):
+			w.WriteHeader(http.StatusUnsupportedMediaType)
 		case errors.Contains(errorVal, io.ErrUnexpectedEOF):
 			w.WriteHeader(http.StatusBadRequest)
 		case errors.Contains(errorVal, io.EOF):
