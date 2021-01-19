@@ -86,7 +86,6 @@ func (ns *notifierService) CreateSubscription(ctx context.Context, token string,
 	}
 
 	sub.OwnerID = res.GetId()
-
 	return ns.subs.Save(ctx, sub)
 }
 

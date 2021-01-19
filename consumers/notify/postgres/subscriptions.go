@@ -45,12 +45,14 @@ func (repo subscriptionsRepo) Save(ctx context.Context, sub notify.Subscription)
 		Topic:   sub.Topic,
 	}
 
-	if _, err := repo.db.NamedQueryContext(ctx, q, dbSub); err != nil {
+	row, err := repo.db.NamedQueryContext(ctx, q, dbSub)
+	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code.Name() == errDuplicate {
 			return "", errors.Wrap(notify.ErrConflict, err)
 		}
 		return "", errors.Wrap(errSaveSub, err)
 	}
+	defer row.Close()
 
 	return sub.ID, nil
 }

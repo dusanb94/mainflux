@@ -49,11 +49,10 @@ func migrateDB(db *sqlx.DB) error {
 				Id: "subscriptions_1",
 				Up: []string{
 					`CREATE TABLE IF NOT EXISTS subscriptions (
-                        id          VARCHAR(254),
-                        owner_id    VARCHAR(254),
+                        id          VARCHAR(254) PRIMARY KEY,
+                        owner_id    VARCHAR(254) NOT NULL,
                         contact     VARCHAR(254),
                         topic       TEXT,
-                        PRIMARY KEY (id, owner_id, topic),
                         UNIQUE(topic, contact)
                     )`,
 				},
