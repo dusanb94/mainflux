@@ -125,7 +125,7 @@ func decodeList(_ context.Context, r *http.Request) (interface{}, error) {
 	}
 	req.offset = offset
 
-	limit, err := readUintQuery(r, "limit", 10)
+	limit, err := readUintQuery(r, "limit", 20)
 	if err != nil {
 		return listSubsReq{}, err
 	}
@@ -176,9 +176,11 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 		switch {
 		case errors.Contains(errorVal, errMalformedEntity),
 			errors.Contains(errorVal, errInvalidContact),
-			errors.Contains(errorVal, errInvalidTopic):
+			errors.Contains(errorVal, errInvalidTopic),
+			errors.Contains(errorVal, errInvalidQueryParams):
 			w.WriteHeader(http.StatusBadRequest)
-		case errors.Contains(errorVal, notify.ErrNotFound):
+		case errors.Contains(errorVal, notify.ErrNotFound),
+			errors.Contains(errorVal, errNotFound):
 			w.WriteHeader(http.StatusNotFound)
 		case errors.Contains(errorVal, notify.ErrUnauthorizedAccess):
 			w.WriteHeader(http.StatusUnauthorized)

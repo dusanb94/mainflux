@@ -65,7 +65,7 @@ func TestView(t *testing.T) {
 	repo := postgres.New(dbMiddleware)
 
 	id, err := idProvider.ID()
-	require.Nil(t, err, fmt.Sprintf("got unexpected error: %s", err))
+	require.Nil(t, err, fmt.Sprintf("got an error creating id: %s", err))
 
 	sub := notify.Subscription{
 		OwnerID: "owner",
@@ -211,7 +211,7 @@ func TestRemove(t *testing.T) {
 	dbMiddleware := postgres.NewDatabase(db)
 	repo := postgres.New(dbMiddleware)
 	id, err := idProvider.ID()
-	require.Nil(t, err, fmt.Sprintf("got unexpected error: %s", err))
+	require.Nil(t, err, fmt.Sprintf("got an error creating id: %s", err))
 	sub := notify.Subscription{
 		OwnerID: "owner",
 		ID:      id,

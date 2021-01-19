@@ -85,7 +85,7 @@ func (res removeSubRes) Headers() map[string]string {
 }
 
 func (res removeSubRes) Empty() bool {
-	return false
+	return true
 }
 
 type errorRes struct {
