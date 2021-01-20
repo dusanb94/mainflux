@@ -15,8 +15,6 @@ import (
 const (
 	saveOp            = "save_op"
 	retrieveByEmailOp = "retrieve_by_email"
-	updatePassword    = "update_password"
-	members           = "members"
 )
 
 var _ notify.SubscriptionsRepository = (*subRepositoryMiddleware)(nil)

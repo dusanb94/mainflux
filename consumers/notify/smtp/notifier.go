@@ -8,7 +8,6 @@ import (
 
 	"github.com/mainflux/mainflux/consumers/notify"
 	"github.com/mainflux/mainflux/internal/email"
-	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/pkg/messaging"
 )
 
@@ -17,7 +16,6 @@ const (
 	contentTemplate = "A publisher with an id %s sent the message over %s with the following values \n %s"
 )
 
-var errMessage = errors.New("failed to convert to Mainflux message")
 var _ notify.Notifier = (*emailer)(nil)
 
 type emailer struct {

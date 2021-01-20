@@ -22,18 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const (
-	contentType = "application/json"
-
-	offsetKey   = "offset"
-	limitKey    = "limit"
-	nameKey     = "name"
-	emailKey    = "email"
-	metadataKey = "metadata"
-
-	defOffset = 0
-	defLimit  = 10
-)
+const contentType = "application/json"
 
 var (
 	errMalformedEntity        = errors.New("failed to decode request body")
