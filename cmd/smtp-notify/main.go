@@ -137,7 +137,7 @@ func main() {
 	authTracer, closer := initJaeger("auth", cfg.jaegerURL, logger)
 	defer closer.Close()
 
-	auth, close := connectToAuthn(cfg, authTracer, logger)
+	auth, close := connectToAuth(cfg, authTracer, logger)
 	if close != nil {
 		defer close()
 	}
@@ -168,7 +168,7 @@ func main() {
 }
 
 func loadConfig() config {
-	authnTimeout, err := time.ParseDuration(mainflux.Env(envAuthTimeout, defAuthTimeout))
+	authTimeout, err := time.ParseDuration(mainflux.Env(envAuthTimeout, defAuthTimeout))
 	if err != nil {
 		log.Fatalf("Invalid %s value: %s", envAuthTimeout, err.Error())
 	}
@@ -214,7 +214,7 @@ func loadConfig() config {
 		authTLS:     tls,
 		authCACerts: mainflux.Env(envAuthCACerts, defAuthCACerts),
 		authURL:     mainflux.Env(envAuthURL, defAuthURL),
-		authTimeout: authnTimeout,
+		authTimeout: authTimeout,
 	}
 
 }
@@ -251,7 +251,7 @@ func connectToDB(dbConfig postgres.Config, logger logger.Logger) *sqlx.DB {
 	return db
 }
 
-func connectToAuthn(cfg config, tracer opentracing.Tracer, logger logger.Logger) (mainflux.AuthServiceClient, func() error) {
+func connectToAuth(cfg config, tracer opentracing.Tracer, logger logger.Logger) (mainflux.AuthServiceClient, func() error) {
 	var opts []grpc.DialOption
 	if cfg.authTLS {
 		if cfg.authCACerts != "" {
@@ -269,7 +269,7 @@ func connectToAuthn(cfg config, tracer opentracing.Tracer, logger logger.Logger)
 
 	conn, err := grpc.Dial(cfg.authURL, opts...)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to connect to authn service: %s", err))
+		logger.Error(fmt.Sprintf("Failed to connect to auth service: %s", err))
 		os.Exit(1)
 	}
 
