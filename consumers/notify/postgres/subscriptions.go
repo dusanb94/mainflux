@@ -101,7 +101,7 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMet
 	}
 	defer rows.Close()
 
-	subs := []notify.Subscription{}
+	var subs []notify.Subscription
 	for rows.Next() {
 		sub := dbSubscription{}
 		if err := rows.StructScan(&sub); err != nil {

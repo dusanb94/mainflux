@@ -142,10 +142,10 @@ func main() {
 		defer close()
 	}
 
-	tracer, closer := initJaeger("notify-smtp", cfg.jaegerURL, logger)
+	tracer, closer := initJaeger("smtp-notify", cfg.jaegerURL, logger)
 	defer closer.Close()
 
-	dbTracer, dbCloser := initJaeger("notify-smtp_db", cfg.jaegerURL, logger)
+	dbTracer, dbCloser := initJaeger("smtp-notify_db", cfg.jaegerURL, logger)
 	defer dbCloser.Close()
 
 	svc := newService(db, dbTracer, auth, cfg, logger)

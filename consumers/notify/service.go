@@ -90,8 +90,7 @@ func (ns *notifierService) CreateSubscription(ctx context.Context, token string,
 }
 
 func (ns *notifierService) ViewSubscription(ctx context.Context, token, id string) (Subscription, error) {
-	_, err := ns.auth.Identify(ctx, &mainflux.Token{Value: token})
-	if err != nil {
+	if _, err := ns.auth.Identify(ctx, &mainflux.Token{Value: token}); err != nil {
 		return Subscription{}, errors.Wrap(ErrUnauthorizedAccess, err)
 	}
 
@@ -99,8 +98,7 @@ func (ns *notifierService) ViewSubscription(ctx context.Context, token, id strin
 }
 
 func (ns *notifierService) ListSubscriptions(ctx context.Context, token string, pm PageMetadata) (Page, error) {
-	_, err := ns.auth.Identify(ctx, &mainflux.Token{Value: token})
-	if err != nil {
+	if _, err := ns.auth.Identify(ctx, &mainflux.Token{Value: token}); err != nil {
 		return Page{}, errors.Wrap(ErrUnauthorizedAccess, err)
 	}
 
@@ -108,8 +106,7 @@ func (ns *notifierService) ListSubscriptions(ctx context.Context, token string, 
 }
 
 func (ns *notifierService) RemoveSubscription(ctx context.Context, token, id string) error {
-	_, err := ns.auth.Identify(ctx, &mainflux.Token{Value: token})
-	if err != nil {
+	if _, err := ns.auth.Identify(ctx, &mainflux.Token{Value: token}); err != nil {
 		return errors.Wrap(ErrUnauthorizedAccess, err)
 	}
 

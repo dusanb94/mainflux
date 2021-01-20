@@ -34,25 +34,29 @@ func newService() notify.Service {
 func TestCreateSubscription(t *testing.T) {
 	svc := newService()
 
-	cases := map[string]struct {
+	cases := []struct {
+		desc  string
 		token string
 		sub   notify.Subscription
 		id    string
 		err   error
 	}{
-		"test success": {
+		{
+			desc:  "test success",
 			token: exampleUser1,
 			sub:   notify.Subscription{Contact: exampleUser1, Topic: "valid.topic"},
 			id:    uuid.Prefix + fmt.Sprintf("%012d", 1),
 			err:   nil,
 		},
-		"test already existing": {
+		{
+			desc:  "test already existing",
 			token: exampleUser1,
 			sub:   notify.Subscription{Contact: exampleUser1, Topic: "valid.topic"},
 			id:    "",
 			err:   notify.ErrConflict,
 		},
-		"test unauthorized access": {
+		{
+			desc:  "test unauthorized access",
 			token: "",
 			sub:   notify.Subscription{Contact: exampleUser1, Topic: "valid.topic"},
 			id:    "",
@@ -60,10 +64,10 @@ func TestCreateSubscription(t *testing.T) {
 		},
 	}
 
-	for desc, tc := range cases {
+	for _, tc := range cases {
 		id, err := svc.CreateSubscription(context.Background(), tc.token, tc.sub)
-		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
-		assert.Equal(t, tc.id, id, fmt.Sprintf("%s: expected %s got %s\n", desc, tc.id, id))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		assert.Equal(t, tc.id, id, fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.id, id))
 	}
 }
 
@@ -75,25 +79,29 @@ func TestViewSubscription(t *testing.T) {
 	sub.ID = id
 	sub.OwnerID = exampleUser1
 
-	cases := map[string]struct {
+	cases := []struct {
+		desc  string
 		token string
 		id    string
 		sub   notify.Subscription
 		err   error
 	}{
-		"test success": {
+		{
+			desc:  "test success",
 			token: exampleUser1,
 			id:    id,
 			sub:   sub,
 			err:   nil,
 		},
-		"test not existing": {
+		{
+			desc:  "test not existing",
 			token: exampleUser1,
 			id:    "not_exist",
 			sub:   notify.Subscription{},
 			err:   notify.ErrNotFound,
 		},
-		"test unauthorized access": {
+		{
+			desc:  "test unauthorized access",
 			token: "",
 			id:    id,
 			sub:   notify.Subscription{},
@@ -101,10 +109,10 @@ func TestViewSubscription(t *testing.T) {
 		},
 	}
 
-	for desc, tc := range cases {
+	for _, tc := range cases {
 		sub, err := svc.ViewSubscription(context.Background(), tc.token, tc.id)
-		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
-		assert.Equal(t, tc.sub, sub, fmt.Sprintf("%s: expected %v got %v\n", desc, tc.sub, sub))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		assert.Equal(t, tc.sub, sub, fmt.Sprintf("%s: expected %v got %v\n", tc.desc, tc.sub, sub))
 	}
 }
 
@@ -134,13 +142,15 @@ func TestListSubscriptions(t *testing.T) {
 		offsetSubs = append(offsetSubs, subs[i])
 	}
 
-	cases := map[string]struct {
+	cases := []struct {
+		desc     string
 		token    string
 		pageMeta notify.PageMetadata
 		page     notify.Page
 		err      error
 	}{
-		"test success": {
+		{
+			desc:  "test success",
 			token: exampleUser1,
 			pageMeta: notify.PageMetadata{
 				Offset: 0,
@@ -156,7 +166,8 @@ func TestListSubscriptions(t *testing.T) {
 				Total:         total,
 			},
 		},
-		"test not existing": {
+		{
+			desc:  "test not existing",
 			token: exampleUser1,
 			pageMeta: notify.PageMetadata{
 				Limit:   10,
@@ -165,7 +176,8 @@ func TestListSubscriptions(t *testing.T) {
 			page: notify.Page{},
 			err:  notify.ErrNotFound,
 		},
-		"test unauthorized access": {
+		{
+			desc:  "test unauthorized access",
 			token: "",
 			pageMeta: notify.PageMetadata{
 				Offset: 2,
@@ -175,7 +187,8 @@ func TestListSubscriptions(t *testing.T) {
 			page: notify.Page{},
 			err:  notify.ErrUnauthorizedAccess,
 		},
-		"test with topic": {
+		{
+			desc:  "test with topic",
 			token: exampleUser1,
 			pageMeta: notify.PageMetadata{
 				Limit: 10,
@@ -191,7 +204,8 @@ func TestListSubscriptions(t *testing.T) {
 			},
 			err: nil,
 		},
-		"test with contact and offset": {
+		{
+			desc:  "test with contact and offset",
 			token: exampleUser1,
 			pageMeta: notify.PageMetadata{
 				Offset:  10,
@@ -211,10 +225,10 @@ func TestListSubscriptions(t *testing.T) {
 		},
 	}
 
-	for desc, tc := range cases {
+	for _, tc := range cases {
 		page, err := svc.ListSubscriptions(context.Background(), tc.token, tc.pageMeta)
-		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
-		assert.Equal(t, tc.page, page, fmt.Sprintf("%s: expected %v got %v\n", desc, tc.page, page))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
+		assert.Equal(t, tc.page, page, fmt.Sprintf("%s: expected %v got %v\n", tc.desc, tc.page, page))
 	}
 }
 
@@ -226,31 +240,35 @@ func TestRemoveSubscription(t *testing.T) {
 	sub.ID = id
 	sub.OwnerID = exampleUser1
 
-	cases := map[string]struct {
+	cases := []struct {
+		desc  string
 		token string
 		id    string
 		err   error
 	}{
-		"test success": {
+		{
+			desc:  "test success",
 			token: exampleUser1,
 			id:    id,
 			err:   nil,
 		},
-		"test not existing": {
+		{
+			desc:  "test not existing",
 			token: exampleUser1,
 			id:    "not_exist",
 			err:   nil,
 		},
-		"test unauthorized access": {
+		{
+			desc:  "test unauthorized access",
 			token: "",
 			id:    id,
 			err:   notify.ErrUnauthorizedAccess,
 		},
 	}
 
-	for desc, tc := range cases {
+	for _, tc := range cases {
 		err := svc.RemoveSubscription(context.Background(), tc.token, tc.id)
-		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -286,21 +304,24 @@ func TestConsume(t *testing.T) {
 		Subtopic: "subtopic-2",
 	}
 
-	cases := map[string]struct {
-		msg messaging.Message
-		err error
+	cases := []struct {
+		desc string
+		msg  messaging.Message
+		err  error
 	}{
-		"test success": {
-			msg: msg,
+		{
+			desc: "test success",
+			msg:  msg,
 		},
-		"test fail": {
-			msg: errMsg,
-			err: notify.ErrNotify,
+		{
+			desc: "test fail",
+			msg:  errMsg,
+			err:  notify.ErrNotify,
 		},
 	}
 
-	for desc, tc := range cases {
+	for _, tc := range cases {
 		err := svc.Consume(tc.msg)
-		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }

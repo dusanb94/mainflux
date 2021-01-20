@@ -283,7 +283,7 @@ func TestList(t *testing.T) {
 		require.Nil(t, err, fmt.Sprintf("got an error creating id: %s", err))
 		subs = append(subs, sr)
 	}
-	noLimit := toJSON(page{Offset: 5, Limit: 20, Total: 100, Subscriptions: subs[5:25]})
+	noLimit := toJSON(page{Offset: 5, Limit: 20, Total: numSubs, Subscriptions: subs[5:25]})
 	one := toJSON(page{Offset: 0, Limit: 20, Total: 1, Subscriptions: subs[10:11]})
 
 	var contact2Subs []subRes
@@ -292,13 +292,15 @@ func TestList(t *testing.T) {
 	}
 	contact2 := toJSON(page{Offset: 10, Limit: 10, Total: 50, Subscriptions: contact2Subs})
 
-	cases := map[string]struct {
+	cases := []struct {
+		desc   string
 		query  map[string]string
 		auth   string
 		status int
 		res    string
 	}{
-		"list default limit": {
+		{
+			desc: "list default limit",
 			query: map[string]string{
 				"offset": "5",
 			},
@@ -306,7 +308,8 @@ func TestList(t *testing.T) {
 			status: http.StatusOK,
 			res:    noLimit,
 		},
-		"list not existing": {
+		{
+			desc: "list not existing",
 			query: map[string]string{
 				"topic": "not-found-topic",
 			},
@@ -314,7 +317,8 @@ func TestList(t *testing.T) {
 			status: http.StatusNotFound,
 			res:    notFoundRes,
 		},
-		"list one with topic": {
+		{
+			desc: "list one with topic",
 			query: map[string]string{
 				"topic": "topic.subtopic.10",
 			},
@@ -322,7 +326,8 @@ func TestList(t *testing.T) {
 			status: http.StatusOK,
 			res:    one,
 		},
-		"list with contact": {
+		{
+			desc: "list with contact",
 			query: map[string]string{
 				"contact": "contact2@example.com",
 				"offset":  "10",
@@ -332,7 +337,8 @@ func TestList(t *testing.T) {
 			status: http.StatusOK,
 			res:    contact2,
 		},
-		"list with invalid query": {
+		{
+			desc: "list with invalid query",
 			query: map[string]string{
 				"offset": "two",
 			},
@@ -340,19 +346,21 @@ func TestList(t *testing.T) {
 			status: http.StatusBadRequest,
 			res:    invalidRes,
 		},
-		"list with invalid auth token": {
+		{
+			desc:   "list with invalid auth token",
 			auth:   wrongValue,
 			status: http.StatusUnauthorized,
 			res:    unauthRes,
 		},
-		"list with empty auth token": {
+		{
+			desc:   "list with empty auth token",
 			auth:   "",
 			status: http.StatusUnauthorized,
 			res:    unauthRes,
 		},
 	}
 
-	for desc, tc := range cases {
+	for _, tc := range cases {
 		req := testRequest{
 			client: ss.Client(),
 			method: http.MethodGet,
@@ -360,12 +368,12 @@ func TestList(t *testing.T) {
 			token:  tc.auth,
 		}
 		res, err := req.make()
-		assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", desc, err))
+		assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", tc.desc, err))
 		body, err := ioutil.ReadAll(res.Body)
-		assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", desc, err))
+		assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", tc.desc, err))
 		data := strings.Trim(string(body), "\n")
-		assert.Equal(t, tc.status, res.StatusCode, fmt.Sprintf("%s: expected status code %d got %d", desc, tc.status, res.StatusCode))
-		assert.Equal(t, tc.res, data, fmt.Sprintf("%s: expected body %s got %s", desc, tc.res, data))
+		assert.Equal(t, tc.status, res.StatusCode, fmt.Sprintf("%s: expected status code %d got %d", tc.desc, tc.status, res.StatusCode))
+		assert.Equal(t, tc.res, data, fmt.Sprintf("%s: expected body %s got %s", tc.desc, tc.res, data))
 	}
 }
 
@@ -381,35 +389,40 @@ func TestRemove(t *testing.T) {
 	id, err := svc.CreateSubscription(context.Background(), token, sub)
 	require.Nil(t, err, fmt.Sprintf("got an error creating id: %s", err))
 
-	cases := map[string]struct {
+	cases := []struct {
 		desc   string
 		id     string
 		auth   string
 		status int
 		res    string
 	}{
-		"remove successfully": {
+		{
+			desc:   "remove successfully",
 			id:     id,
 			auth:   token,
 			status: http.StatusNoContent,
 		},
-		"remove not existing": {
+		{
+			desc:   "remove not existing",
 			id:     "not existing",
 			auth:   token,
 			status: http.StatusNoContent,
 		},
-		"remove empty id": {
+		{
+			desc:   "remove empty id",
 			id:     "",
 			auth:   token,
 			status: http.StatusNotFound,
 		},
-		"view with invalid auth token": {
+		{
+			desc:   "view with invalid auth token",
 			id:     id,
 			auth:   wrongValue,
 			status: http.StatusUnauthorized,
 			res:    unauthRes,
 		},
-		"view with empty auth token": {
+		{
+			desc:   "view with empty auth token",
 			id:     id,
 			auth:   "",
 			status: http.StatusUnauthorized,

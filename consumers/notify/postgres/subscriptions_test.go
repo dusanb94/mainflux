@@ -26,7 +26,7 @@ func TestSave(t *testing.T) {
 	require.Nil(t, err, fmt.Sprintf("got unexpected error: %s", err))
 
 	sub1 := notify.Subscription{
-		OwnerID: "owner",
+		OwnerID: id1,
 		ID:      id1,
 		Contact: "ownersave@example.com",
 		Topic:   "topic.subtopic",
@@ -35,27 +35,30 @@ func TestSave(t *testing.T) {
 	sub2 := sub1
 	sub2.ID = id2
 
-	cases := map[string]struct {
-		sub notify.Subscription
-		id  string
-		err error
+	cases := []struct {
+		desc string
+		sub  notify.Subscription
+		id   string
+		err  error
 	}{
-		"save successfully": {
-			sub: sub1,
-			id:  id1,
-			err: nil,
+		{
+			desc: "save successfully",
+			sub:  sub1,
+			id:   id1,
+			err:  nil,
 		},
-		"save duplicate": {
-			sub: sub2,
-			id:  "",
-			err: notify.ErrConflict,
+		{
+			desc: "save duplicate",
+			sub:  sub2,
+			id:   "",
+			err:  notify.ErrConflict,
 		},
 	}
 
-	for desc, tc := range cases {
+	for _, tc := range cases {
 		id, err := repo.Save(context.Background(), tc.sub)
-		assert.Equal(t, tc.id, id, fmt.Sprintf("%s: expected id %s got %s\n", desc, tc.id, id))
-		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
+		assert.Equal(t, tc.id, id, fmt.Sprintf("%s: expected id %s got %s\n", tc.desc, tc.id, id))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 
 	}
 }
@@ -68,7 +71,7 @@ func TestView(t *testing.T) {
 	require.Nil(t, err, fmt.Sprintf("got an error creating id: %s", err))
 
 	sub := notify.Subscription{
-		OwnerID: "owner",
+		OwnerID: id,
 		ID:      id,
 		Contact: "ownerview@example.com",
 		Topic:   "topic.subtopic",
@@ -78,27 +81,30 @@ func TestView(t *testing.T) {
 	require.Nil(t, err, fmt.Sprintf("creating subscription must not fail: %s", err))
 	require.Equal(t, id, ret, fmt.Sprintf("provided id %s must be the same as the returned id %s", id, ret))
 
-	cases := map[string]struct {
-		sub notify.Subscription
-		id  string
-		err error
+	cases := []struct {
+		desc string
+		sub  notify.Subscription
+		id   string
+		err  error
 	}{
-		"retrieve successfully": {
-			sub: sub,
-			id:  id,
-			err: nil,
+		{
+			desc: "retrieve successfully",
+			sub:  sub,
+			id:   id,
+			err:  nil,
 		},
-		"retrieve not existing": {
-			sub: notify.Subscription{},
-			id:  "non-existing",
-			err: notify.ErrNotFound,
+		{
+			desc: "retrieve not existing",
+			sub:  notify.Subscription{},
+			id:   "non-existing",
+			err:  notify.ErrNotFound,
 		},
 	}
 
-	for desc, tc := range cases {
+	for _, tc := range cases {
 		sub, err := repo.Retrieve(context.Background(), tc.id)
-		assert.Equal(t, tc.sub, sub, fmt.Sprintf("%s: expected sub %v got %v\n", desc, tc.sub, sub))
-		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
+		assert.Equal(t, tc.sub, sub, fmt.Sprintf("%s: expected sub %v got %v\n", tc.desc, tc.sub, sub))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 
 	}
 }
@@ -130,12 +136,14 @@ func TestRetrieveAll(t *testing.T) {
 		subs = append(subs, sub)
 	}
 
-	cases := map[string]struct {
+	cases := []struct {
+		desc     string
 		pageMeta notify.PageMetadata
 		page     notify.Page
 		err      error
 	}{
-		"retrieve successfully": {
+		{
+			desc: "retrieve successfully",
 			pageMeta: notify.PageMetadata{
 				Offset: 10,
 				Limit:  2,
@@ -150,7 +158,8 @@ func TestRetrieveAll(t *testing.T) {
 			},
 			err: nil,
 		},
-		"retrieve with contact": {
+		{
+			desc: "retrieve with contact",
 			pageMeta: notify.PageMetadata{
 				Offset:  10,
 				Limit:   2,
@@ -167,7 +176,8 @@ func TestRetrieveAll(t *testing.T) {
 			},
 			err: nil,
 		},
-		"retrieve with topic": {
+		{
+			desc: "retrieve with topic",
 			pageMeta: notify.PageMetadata{
 				Offset: 0,
 				Limit:  2,
@@ -184,7 +194,8 @@ func TestRetrieveAll(t *testing.T) {
 			},
 			err: nil,
 		},
-		"retrieve with no limit": {
+		{
+			desc: "retrieve with no limit",
 			pageMeta: notify.PageMetadata{
 				Offset: 0,
 				Limit:  -1,
@@ -200,10 +211,10 @@ func TestRetrieveAll(t *testing.T) {
 		},
 	}
 
-	for desc, tc := range cases {
+	for _, tc := range cases {
 		page, err := repo.RetrieveAll(context.Background(), tc.pageMeta)
-		assert.Equal(t, tc.page, page, fmt.Sprintf("%s: expected page %v got %v\n", desc, tc.page, page))
-		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
+		assert.Equal(t, tc.page, page, fmt.Sprintf("%s: expected page %v got %v\n", tc.desc, tc.page, page))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
 
@@ -213,7 +224,7 @@ func TestRemove(t *testing.T) {
 	id, err := idProvider.ID()
 	require.Nil(t, err, fmt.Sprintf("got an error creating id: %s", err))
 	sub := notify.Subscription{
-		OwnerID: "owner",
+		OwnerID: id,
 		ID:      id,
 		Contact: "ownerremove@example.com",
 		Topic:   "topic.subtopic.%d",
@@ -223,22 +234,25 @@ func TestRemove(t *testing.T) {
 	require.Nil(t, err, fmt.Sprintf("creating subscription must not fail: %s", err))
 	require.Equal(t, id, ret, fmt.Sprintf("provided id %s must be the same as the returned id %s", id, ret))
 
-	cases := map[string]struct {
-		id  string
-		err error
+	cases := []struct {
+		desc string
+		id   string
+		err  error
 	}{
-		"remove successfully": {
-			id:  id,
-			err: nil,
+		{
+			desc: "remove successfully",
+			id:   id,
+			err:  nil,
 		},
-		"remove not existing": {
-			id:  "empty",
-			err: nil,
+		{
+			desc: "remove not existing",
+			id:   "empty",
+			err:  nil,
 		},
 	}
 
-	for desc, tc := range cases {
+	for _, tc := range cases {
 		err := repo.Remove(context.Background(), tc.id)
-		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", desc, tc.err, err))
+		assert.True(t, errors.Contains(err, tc.err), fmt.Sprintf("%s: expected %s got %s\n", tc.desc, tc.err, err))
 	}
 }
