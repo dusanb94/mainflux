@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	total        = 100
 	exampleUser1 = "email1@example.com"
 	exampleUser2 = "email2@example.com"
 	invalidUser  = "invalid@example.com"
@@ -118,7 +119,6 @@ func TestViewSubscription(t *testing.T) {
 
 func TestListSubscriptions(t *testing.T) {
 	svc := newService()
-	const total = 100
 	sub := notify.Subscription{Contact: exampleUser1, OwnerID: exampleUser1}
 	topic := "topic.subtopic"
 	var subs []notify.Subscription
@@ -274,7 +274,6 @@ func TestRemoveSubscription(t *testing.T) {
 
 func TestConsume(t *testing.T) {
 	svc := newService()
-	const total = 100
 	sub := notify.Subscription{
 		Contact: exampleUser1,
 		OwnerID: exampleUser1,
