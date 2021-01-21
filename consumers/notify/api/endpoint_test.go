@@ -26,6 +26,8 @@ import (
 const (
 	contentType = "application/json"
 	email       = "user@example.com"
+	contact1    = "email1@example.com"
+	contact2    = "email2@example.com"
 	token       = "token"
 	wrongValue  = "wrong_value"
 )
@@ -84,12 +86,12 @@ func TestCreate(t *testing.T) {
 
 	sub := notify.Subscription{
 		Topic:   "topic",
-		Contact: "contact@example.com",
+		Contact: contact1,
 	}
 
 	data := toJSON(sub)
 
-	emptyTopic := toJSON(notify.Subscription{Contact: "contact1@example.com"})
+	emptyTopic := toJSON(notify.Subscription{Contact: contact1})
 	emptyContact := toJSON(notify.Subscription{Topic: "topic123"})
 
 	cases := []struct {
@@ -191,7 +193,7 @@ func TestView(t *testing.T) {
 
 	sub := notify.Subscription{
 		Topic:   "topic",
-		Contact: "contact@example.com",
+		Contact: contact1,
 	}
 	id, err := svc.CreateSubscription(context.Background(), token, sub)
 	require.Nil(t, err, fmt.Sprintf("got an error creating id: %s", err))
@@ -248,9 +250,9 @@ func TestView(t *testing.T) {
 			token:  tc.auth,
 		}
 		res, err := req.make()
-		assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", tc.desc, err))
+		assert.Nil(t, err, fmt.Sprintf("%s: unexpected request error %s", tc.desc, err))
 		body, err := ioutil.ReadAll(res.Body)
-		assert.Nil(t, err, fmt.Sprintf("%s: unexpected error %s", tc.desc, err))
+		assert.Nil(t, err, fmt.Sprintf("%s: unexpected read error %s", tc.desc, err))
 		data := strings.Trim(string(body), "\n")
 		assert.Equal(t, tc.status, res.StatusCode, fmt.Sprintf("%s: expected status code %d got %d", tc.desc, tc.status, res.StatusCode))
 		assert.Equal(t, tc.res, data, fmt.Sprintf("%s: expected body %s got %s", tc.desc, tc.res, data))
@@ -268,10 +270,10 @@ func TestList(t *testing.T) {
 	for i := 0; i < numSubs; i++ {
 		sub := notify.Subscription{
 			Topic:   fmt.Sprintf("topic.subtopic.%d", i),
-			Contact: "contact1@example.com",
+			Contact: contact1,
 		}
 		if i%2 == 0 {
-			sub.Contact = "contact2@example.com"
+			sub.Contact = contact2
 		}
 		id, err := svc.CreateSubscription(context.Background(), token, sub)
 		sr := subRes{
@@ -290,7 +292,7 @@ func TestList(t *testing.T) {
 	for i := 20; i < 40; i += 2 {
 		contact2Subs = append(contact2Subs, subs[i])
 	}
-	contact2 := toJSON(page{Offset: 10, Limit: 10, Total: 50, Subscriptions: contact2Subs})
+	contactList := toJSON(page{Offset: 10, Limit: 10, Total: 50, Subscriptions: contact2Subs})
 
 	cases := []struct {
 		desc   string
@@ -329,13 +331,13 @@ func TestList(t *testing.T) {
 		{
 			desc: "list with contact",
 			query: map[string]string{
-				"contact": "contact2@example.com",
+				"contact": contact2,
 				"offset":  "10",
 				"limit":   "10",
 			},
 			auth:   token,
 			status: http.StatusOK,
-			res:    contact2,
+			res:    contactList,
 		},
 		{
 			desc: "list with invalid query",
@@ -384,7 +386,7 @@ func TestRemove(t *testing.T) {
 
 	sub := notify.Subscription{
 		Topic:   "topic",
-		Contact: "contact@example.com",
+		Contact: contact1,
 	}
 	id, err := svc.CreateSubscription(context.Background(), token, sub)
 	require.Nil(t, err, fmt.Sprintf("got an error creating id: %s", err))

@@ -15,6 +15,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	owner   = "owner@example.com"
+	numSubs = 100
+)
+
 func TestSave(t *testing.T) {
 	dbMiddleware := postgres.NewDatabase(db)
 	repo := postgres.New(dbMiddleware)
@@ -28,7 +33,7 @@ func TestSave(t *testing.T) {
 	sub1 := notify.Subscription{
 		OwnerID: id1,
 		ID:      id1,
-		Contact: "ownersave@example.com",
+		Contact: owner,
 		Topic:   "topic.subtopic",
 	}
 
@@ -73,8 +78,8 @@ func TestView(t *testing.T) {
 	sub := notify.Subscription{
 		OwnerID: id,
 		ID:      id,
-		Contact: "ownerview@example.com",
-		Topic:   "topic.subtopic",
+		Contact: owner,
+		Topic:   "view.subtopic",
 	}
 
 	ret, err := repo.Save(context.Background(), sub)
@@ -116,8 +121,6 @@ func TestRetrieveAll(t *testing.T) {
 	dbMiddleware := postgres.NewDatabase(db)
 	repo := postgres.New(dbMiddleware)
 
-	const numSubs = 100
-
 	var subs []notify.Subscription
 
 	for i := 0; i < numSubs; i++ {
@@ -126,8 +129,8 @@ func TestRetrieveAll(t *testing.T) {
 		sub := notify.Subscription{
 			OwnerID: "owner",
 			ID:      id,
-			Contact: "ownerlist@example.com",
-			Topic:   fmt.Sprintf("topic.subtopic.%d", i),
+			Contact: owner,
+			Topic:   fmt.Sprintf("list.subtopic.%d", i),
 		}
 
 		ret, err := repo.Save(context.Background(), sub)
@@ -163,14 +166,14 @@ func TestRetrieveAll(t *testing.T) {
 			pageMeta: notify.PageMetadata{
 				Offset:  10,
 				Limit:   2,
-				Contact: "ownerlist@example.com",
+				Contact: owner,
 			},
 			page: notify.Page{
 				Total: numSubs,
 				PageMetadata: notify.PageMetadata{
 					Offset:  10,
 					Limit:   2,
-					Contact: "ownerlist@example.com",
+					Contact: owner,
 				},
 				Subscriptions: subs[10:12],
 			},
@@ -181,14 +184,14 @@ func TestRetrieveAll(t *testing.T) {
 			pageMeta: notify.PageMetadata{
 				Offset: 0,
 				Limit:  2,
-				Topic:  "topic.subtopic.11",
+				Topic:  "list.subtopic.11",
 			},
 			page: notify.Page{
 				Total: 1,
 				PageMetadata: notify.PageMetadata{
 					Offset: 0,
 					Limit:  2,
-					Topic:  "topic.subtopic.11",
+					Topic:  "list.subtopic.11",
 				},
 				Subscriptions: subs[11:12],
 			},
@@ -226,8 +229,8 @@ func TestRemove(t *testing.T) {
 	sub := notify.Subscription{
 		OwnerID: id,
 		ID:      id,
-		Contact: "ownerremove@example.com",
-		Topic:   "topic.subtopic.%d",
+		Contact: owner,
+		Topic:   "remove.subtopic.%d",
 	}
 
 	ret, err := repo.Save(context.Background(), sub)
