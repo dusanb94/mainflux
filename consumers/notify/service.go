@@ -25,6 +25,9 @@ var (
 	// ErrConflict indicates usage of the existing subscription.
 	ErrConflict = errors.New("subscription already exist")
 
+	// ErrSave indicates error saving entity.
+	ErrSave = errors.New("failed to subscription")
+
 	// ErrNotFound indicates a non-existent entity request.
 	ErrNotFound = errors.New("non-existent entity")
 

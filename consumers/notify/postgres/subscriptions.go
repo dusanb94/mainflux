@@ -14,11 +14,6 @@ import (
 	"github.com/mainflux/mainflux/pkg/errors"
 )
 
-var (
-	errSaveSub    = errors.New("Save sub to DB failed")
-	errRetrieveDB = errors.New("Retreiving from DB failed")
-)
-
 var _ notify.SubscriptionsRepository = (*subscriptionsRepo)(nil)
 
 const errDuplicate = "unique_violation"
@@ -49,7 +44,7 @@ func (repo subscriptionsRepo) Save(ctx context.Context, sub notify.Subscription)
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code.Name() == errDuplicate {
 			return "", errors.Wrap(notify.ErrConflict, err)
 		}
-		return "", errors.Wrap(errSaveSub, err)
+		return "", errors.Wrap(notify.ErrSave, err)
 	}
 	defer row.Close()
 
@@ -64,7 +59,7 @@ func (repo subscriptionsRepo) Retrieve(ctx context.Context, id string) (notify.S
 			return notify.Subscription{}, errors.Wrap(notify.ErrNotFound, err)
 
 		}
-		return notify.Subscription{}, errors.Wrap(errRetrieveDB, err)
+		return notify.Subscription{}, errors.Wrap(notify.ErrSelectEntity, err)
 	}
 
 	return fromDBSub(sub), nil
