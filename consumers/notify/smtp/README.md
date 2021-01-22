@@ -1,6 +1,7 @@
 # SMTP Notifier
 
 SMTP Notifier implements notifier for send SMTP notifications.
+
 ## Configuration
 
 The Subscription service using SMTP Notifier is configured using the environment variables presented in the

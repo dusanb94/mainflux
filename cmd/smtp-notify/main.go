@@ -242,6 +242,7 @@ func initJaeger(svcName, url string, logger logger.Logger) (opentracing.Tracer, 
 
 	return tracer, closer
 }
+
 func connectToDB(dbConfig postgres.Config, logger logger.Logger) *sqlx.DB {
 	db, err := postgres.Connect(dbConfig)
 	if err != nil {
