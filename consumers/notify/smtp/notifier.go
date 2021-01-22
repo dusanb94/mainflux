@@ -16,18 +16,18 @@ const (
 	contentTemplate = "A publisher with an id %s sent the message over %s with the following values \n %s"
 )
 
-var _ notify.Notifier = (*emailer)(nil)
+var _ notify.Notifier = (*notifier)(nil)
 
-type emailer struct {
+type notifier struct {
 	agent *email.Agent
 }
 
 // New instantiates SMTP message notifier.
 func New(agent *email.Agent) notify.Notifier {
-	return &emailer{agent: agent}
+	return &notifier{agent: agent}
 }
 
-func (c *emailer) Notify(from string, to []string, msg messaging.Message) error {
+func (n *notifier) Notify(from string, to []string, msg messaging.Message) error {
 	subject := fmt.Sprintf(`Notification for Channel %s`, msg.Channel)
 	if msg.Subtopic != "" {
 		subject = fmt.Sprintf("%s and subtopic %s", subject, msg.Subtopic)
@@ -36,5 +36,5 @@ func (c *emailer) Notify(from string, to []string, msg messaging.Message) error 
 	values := string(msg.Payload)
 	content := fmt.Sprintf(contentTemplate, msg.Publisher, msg.Protocol, values)
 
-	return c.agent.Send(to, from, subject, "", content, footer)
+	return n.agent.Send(to, from, subject, "", content, footer)
 }
