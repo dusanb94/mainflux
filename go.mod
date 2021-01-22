@@ -9,6 +9,7 @@ require (
 	github.com/docker/docker v1.13.1
 	github.com/eclipse/paho.mqtt.golang v1.2.0
 	github.com/fatih/color v1.9.0
+	github.com/fiorix/go-smpp v0.0.0-20181129163705-6dbf72b9bcea
 	github.com/go-kit/kit v0.10.0
 	github.com/go-redis/redis v6.15.8+incompatible
 	github.com/go-zoo/bone v1.3.0
