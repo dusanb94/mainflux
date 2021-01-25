@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
-  title: Mainflux Subscriptions service
-  description: HTTP API for Subscription service.
+  title: Mainflux Notifiers service
+  description: HTTP API for Notifiers service.
   version: "1.0.0"
 paths:
   /subscriptions:
@@ -9,7 +9,7 @@ paths:
       summary: Create subscription
       description: Creates a new subscription give a topic and contact.
       tags:
-        - subscriptions
+        - notifiers
       security:
         - Authorization: []
       requestBody:
@@ -29,7 +29,7 @@ paths:
       summary: List subscriptions
       description: List subscriptions given list parameters.
       tags:
-        - subscriptions
+        - notifiers
       security:
         - Authorization: []
       parameters:
@@ -51,7 +51,7 @@ paths:
       summary: Get subscription with the provided id
       description: Retrieves a subscription with the provided id.
       tags:
-        - subscriptions
+        - notifiers
       security:
         - Authorization: []
       parameters:
@@ -67,7 +67,7 @@ paths:
       summary: Delete subscription with the provided id
       description: Removes a subscription with the provided id.
       tags:
-        - subscriptions
+        - notifiers
       security:
         - Authorization: []
       parameters:
