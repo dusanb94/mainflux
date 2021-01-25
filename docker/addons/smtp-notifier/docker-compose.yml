@@ -13,35 +13,35 @@ networks:
     external: true
 
 volumes:
-  mainflux-smtp-notify-volume:
+  mainflux-smtp-notifier-volume:
 
 services:
   postgres:
     image: postgres:10.2-alpine
-    container_name: mainflux-smtp-notify-db
+    container_name: mainflux-smtp-notifier-db
     restart: on-failure
     environment:
-      POSTGRES_USER: ${MF_SMTP_NOTIFY_DB_USER}
-      POSTGRES_PASSWORD: ${MF_SMTP_NOTIFY_DB_PASS}
-      POSTGRES_DB: ${MF_SMTP_NOTIFY_DB}
+      POSTGRES_USER: ${MF_SMTP_NOTIFIER_DB_USER}
+      POSTGRES_PASSWORD: ${MF_SMTP_NOTIFIER_DB_PASS}
+      POSTGRES_DB: ${MF_SMTP_NOTIFIER_DB}
     networks:
       - docker_mainflux-base-net
     volumes:
-      - mainflux-smtp-notify-volume:/var/lib/postgresql/datab
+      - mainflux-smtp-notifier-volume:/var/lib/postgresql/datab
 
-  smtp-notify:
-    image: mainflux/smtp-notify:latest
-    container_name: mainflux-smtp-notify
+  smtp-notifier:
+    image: mainflux/smtp-notifier:latest
+    container_name: mainflux-smtp-notifier
     depends_on:
       - postgres
     restart: on-failure
     environment:
-      MF_SMTP_NOTIFY_LOG_LEVEL: ${MF_SMTP_NOTIFY_LOG_LEVEL}
-      MF_SMTP_NOTIFY_DB_HOST: postgres
-      MF_SMTP_NOTIFY_DB_PORT: ${MF_SMTP_NOTIFY_DB_PORT}
-      MF_SMTP_NOTIFY_DB_USER: ${MF_SMTP_NOTIFY_DB_USER}
-      MF_SMTP_NOTIFY_DB_PASS: ${MF_SMTP_NOTIFY_DB_PASS}
-      MF_SMTP_NOTIFY_DB: ${MF_SMTP_NOTIFY_DB}
+      MF_SMTP_NOTIFIER_LOG_LEVEL: ${MF_SMTP_NOTIFIER_LOG_LEVEL}
+      MF_SMTP_NOTIFIER_DB_HOST: postgres
+      MF_SMTP_NOTIFIER_DB_PORT: ${MF_SMTP_NOTIFIER_DB_PORT}
+      MF_SMTP_NOTIFIER_DB_USER: ${MF_SMTP_NOTIFIER_DB_USER}
+      MF_SMTP_NOTIFIER_DB_PASS: ${MF_SMTP_NOTIFIER_DB_PASS}
+      MF_SMTP_NOTIFIER_DB: ${MF_SMTP_NOTIFIER_DB}
       MF_NATS_URL: ${MF_NATS_URL}
       MF_JAEGER_URL: ${MF_JAEGER_URL}
       MF_AUTH_GRPC_URL: ${MF_AUTH_GRPC_URL}
@@ -52,7 +52,7 @@ services:
       MF_EMAIL_FROM_NAME: ${MF_EMAIL_FROM_NAME}
       MF_EMAIL_TEMPLATE: ${MF_EMAIL_TEMPLATE}
     ports:
-      - ${MF_SMTP_NOTIFY_PORT}:${MF_SMTP_NOTIFY_PORT}
+      - ${MF_SMTP_NOTIFIER_PORT}:${MF_SMTP_NOTIFIER_PORT}
     networks:
       - docker_mainflux-base-net
     volumes:
