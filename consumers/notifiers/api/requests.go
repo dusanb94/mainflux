@@ -16,7 +16,7 @@ var (
 
 type createSubReq struct {
 	token   string
-	Topic   string
+	Topic   string `json:"topic,omitempty"`
 	Contact string `json:"contact,omitempty"`
 }
 
