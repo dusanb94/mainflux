@@ -52,7 +52,7 @@ func (lm *loggingMiddleware) ViewSubscription(ctx context.Context, token, topic 
 
 func (lm *loggingMiddleware) ListSubscriptions(ctx context.Context, token string, pm notifiers.PageMetadata) (res notifiers.Page, err error) {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method list_subscription for topic %s and token %s took %s to complete", pm.Topic, token, time.Since(begin))
+		message := fmt.Sprintf("Method list_subscriptions for topic %s and token %s took %s to complete", pm.Topic, token, time.Since(begin))
 		if err != nil {
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return
