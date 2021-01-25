@@ -140,8 +140,8 @@ func readUintQuery(r *http.Request, key string, def uint) (uint, error) {
 	}
 
 	return uint(val), nil
-
 }
+
 func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
 	if ar, ok := response.(mainflux.Response); ok {
 		for k, v := range ar.Headers() {

@@ -30,6 +30,7 @@ const (
 	contact2    = "email2@example.com"
 	token       = "token"
 	wrongValue  = "wrong_value"
+	topic       = "topic"
 )
 
 var (
@@ -85,7 +86,7 @@ func TestCreate(t *testing.T) {
 	defer ss.Close()
 
 	sub := notifiers.Subscription{
-		Topic:   "topic",
+		Topic:   topic,
 		Contact: contact1,
 	}
 
@@ -192,7 +193,7 @@ func TestView(t *testing.T) {
 	defer ss.Close()
 
 	sub := notifiers.Subscription{
-		Topic:   "topic",
+		Topic:   topic,
 		Contact: contact1,
 	}
 	id, err := svc.CreateSubscription(context.Background(), token, sub)
