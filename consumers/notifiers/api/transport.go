@@ -60,7 +60,7 @@ func MakeHandler(svc notifiers.Service, tracer opentracing.Tracer) http.Handler 
 	))
 
 	mux.Delete("/subscriptions/:id", kithttp.NewServer(
-		kitot.TraceServer(tracer, "delete_group")(deleteSubscriptionEndpint(svc)),
+		kitot.TraceServer(tracer, "delete_subscription")(deleteSubscriptionEndpint(svc)),
 		decodeSubscription,
 		encodeResponse,
 		opts...,

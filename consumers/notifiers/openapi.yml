@@ -55,7 +55,7 @@ paths:
       security:
         - Authorization: []
       parameters:
-        - $ref: "#/components/parameters/ID"
+        - $ref: "#/components/parameters/Id"
       responses:
         "200":
           $ref: "#/components/responses/View"
@@ -71,7 +71,7 @@ paths:
       security:
         - Authorization: []
       parameters:
-        - $ref: "#/components/parameters/ID"
+        - $ref: "#/components/parameters/Id"
       responses:
         "204":
           description: Subscription removed
@@ -111,7 +111,7 @@ components:
     Page:
       type: object
       properties:
-        groups:
+        subscriptions:
           type: array
           minItems: 0
           uniqueItems: true
@@ -128,7 +128,7 @@ components:
           description: Maximum number of items to return in one page.
 
   parameters:
-    ID:
+    Id:
       name: id
       description: Unique identifier.
       in: path
