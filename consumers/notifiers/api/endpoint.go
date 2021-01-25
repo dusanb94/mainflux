@@ -7,16 +7,16 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/endpoint"
-	"github.com/mainflux/mainflux/consumers/notify"
+	notifiers "github.com/mainflux/mainflux/consumers/notifiers"
 )
 
-func createSubscriptionEndpoint(svc notify.Service) endpoint.Endpoint {
+func createSubscriptionEndpoint(svc notifiers.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(createSubReq)
 		if err := req.validate(); err != nil {
 			return createSubRes{}, err
 		}
-		sub := notify.Subscription{
+		sub := notifiers.Subscription{
 			Contact: req.Contact,
 			Topic:   req.Topic,
 		}
@@ -32,7 +32,7 @@ func createSubscriptionEndpoint(svc notify.Service) endpoint.Endpoint {
 	}
 }
 
-func viewSubscriptionEndpint(svc notify.Service) endpoint.Endpoint {
+func viewSubscriptionEndpint(svc notifiers.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(subReq)
 		if err := req.validate(); err != nil {
@@ -52,13 +52,13 @@ func viewSubscriptionEndpint(svc notify.Service) endpoint.Endpoint {
 	}
 }
 
-func listSubscriptionsEndpoint(svc notify.Service) endpoint.Endpoint {
+func listSubscriptionsEndpoint(svc notifiers.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(listSubsReq)
 		if err := req.validate(); err != nil {
 			return listSubsRes{}, err
 		}
-		pm := notify.PageMetadata{
+		pm := notifiers.PageMetadata{
 			Topic:   req.topic,
 			Contact: req.contact,
 			Offset:  req.offset,
@@ -86,7 +86,7 @@ func listSubscriptionsEndpoint(svc notify.Service) endpoint.Endpoint {
 	}
 }
 
-func deleteSubscriptionEndpint(svc notify.Service) endpoint.Endpoint {
+func deleteSubscriptionEndpint(svc notifiers.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req := request.(subReq)
 		if err := req.validate(); err != nil {

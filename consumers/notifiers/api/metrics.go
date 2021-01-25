@@ -8,19 +8,19 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/metrics"
-	"github.com/mainflux/mainflux/consumers/notify"
+	notifiers "github.com/mainflux/mainflux/consumers/notifiers"
 )
 
-var _ notify.Service = (*metricsMiddleware)(nil)
+var _ notifiers.Service = (*metricsMiddleware)(nil)
 
 type metricsMiddleware struct {
 	counter metrics.Counter
 	latency metrics.Histogram
-	svc     notify.Service
+	svc     notifiers.Service
 }
 
 // MetricsMiddleware instruments core service by tracking request count and latency.
-func MetricsMiddleware(svc notify.Service, counter metrics.Counter, latency metrics.Histogram) notify.Service {
+func MetricsMiddleware(svc notifiers.Service, counter metrics.Counter, latency metrics.Histogram) notifiers.Service {
 	return &metricsMiddleware{
 		counter: counter,
 		latency: latency,
@@ -28,7 +28,7 @@ func MetricsMiddleware(svc notify.Service, counter metrics.Counter, latency metr
 	}
 }
 
-func (ms *metricsMiddleware) CreateSubscription(ctx context.Context, token string, sub notify.Subscription) (string, error) {
+func (ms *metricsMiddleware) CreateSubscription(ctx context.Context, token string, sub notifiers.Subscription) (string, error) {
 	defer func(begin time.Time) {
 		ms.counter.With("method", "create_subscription").Add(1)
 		ms.latency.With("method", "create_subscription").Observe(time.Since(begin).Seconds())
@@ -37,7 +37,7 @@ func (ms *metricsMiddleware) CreateSubscription(ctx context.Context, token strin
 	return ms.svc.CreateSubscription(ctx, token, sub)
 }
 
-func (ms *metricsMiddleware) ViewSubscription(ctx context.Context, token, topic string) (notify.Subscription, error) {
+func (ms *metricsMiddleware) ViewSubscription(ctx context.Context, token, topic string) (notifiers.Subscription, error) {
 	defer func(begin time.Time) {
 		ms.counter.With("method", "view_subscription").Add(1)
 		ms.latency.With("method", "view_subscription").Observe(time.Since(begin).Seconds())
@@ -46,7 +46,7 @@ func (ms *metricsMiddleware) ViewSubscription(ctx context.Context, token, topic 
 	return ms.svc.ViewSubscription(ctx, token, topic)
 }
 
-func (ms *metricsMiddleware) ListSubscriptions(ctx context.Context, token string, pm notify.PageMetadata) (notify.Page, error) {
+func (ms *metricsMiddleware) ListSubscriptions(ctx context.Context, token string, pm notifiers.PageMetadata) (notifiers.Page, error) {
 	defer func(begin time.Time) {
 		ms.counter.With("method", "list_subscriptions").Add(1)
 		ms.latency.With("method", "list_subscriptions").Observe(time.Since(begin).Seconds())

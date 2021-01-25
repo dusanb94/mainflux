@@ -6,7 +6,7 @@ package smtp
 import (
 	"fmt"
 
-	"github.com/mainflux/mainflux/consumers/notify"
+	notifiers "github.com/mainflux/mainflux/consumers/notifiers"
 	"github.com/mainflux/mainflux/internal/email"
 	"github.com/mainflux/mainflux/pkg/messaging"
 )
@@ -16,14 +16,14 @@ const (
 	contentTemplate = "A publisher with an id %s sent the message over %s with the following values \n %s"
 )
 
-var _ notify.Notifier = (*notifier)(nil)
+var _ notifiers.Notifier = (*notifier)(nil)
 
 type notifier struct {
 	agent *email.Agent
 }
 
 // New instantiates SMTP message notifier.
-func New(agent *email.Agent) notify.Notifier {
+func New(agent *email.Agent) notifiers.Notifier {
 	return &notifier{agent: agent}
 }
 

@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mainflux/mainflux/consumers/notify"
+	notifiers "github.com/mainflux/mainflux/consumers/notifiers"
 	"github.com/mainflux/mainflux/pkg/errors"
 
 	kitot "github.com/go-kit/kit/tracing/opentracing"
@@ -31,7 +31,7 @@ var (
 )
 
 // MakeHandler returns a HTTP handler for API endpoints.
-func MakeHandler(svc notify.Service, tracer opentracing.Tracer) http.Handler {
+func MakeHandler(svc notifiers.Service, tracer opentracing.Tracer) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 	}
@@ -168,12 +168,12 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 			errors.Contains(errorVal, errInvalidTopic),
 			errors.Contains(errorVal, errInvalidQueryParams):
 			w.WriteHeader(http.StatusBadRequest)
-		case errors.Contains(errorVal, notify.ErrNotFound),
+		case errors.Contains(errorVal, notifiers.ErrNotFound),
 			errors.Contains(errorVal, errNotFound):
 			w.WriteHeader(http.StatusNotFound)
-		case errors.Contains(errorVal, notify.ErrUnauthorizedAccess):
+		case errors.Contains(errorVal, notifiers.ErrUnauthorizedAccess):
 			w.WriteHeader(http.StatusUnauthorized)
-		case errors.Contains(errorVal, notify.ErrConflict):
+		case errors.Contains(errorVal, notifiers.ErrConflict):
 			w.WriteHeader(http.StatusConflict)
 		case errors.Contains(errorVal, errUnsupportedContentType):
 			w.WriteHeader(http.StatusUnsupportedMediaType)

@@ -14,9 +14,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mainflux/mainflux/consumers/notify"
-	httpapi "github.com/mainflux/mainflux/consumers/notify/api"
-	"github.com/mainflux/mainflux/consumers/notify/mocks"
+	notifiers "github.com/mainflux/mainflux/consumers/notifiers"
+	httpapi "github.com/mainflux/mainflux/consumers/notifiers/api"
+	"github.com/mainflux/mainflux/consumers/notifiers/mocks"
 	"github.com/mainflux/mainflux/pkg/uuid"
 	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/stretchr/testify/assert"
@@ -33,8 +33,8 @@ const (
 )
 
 var (
-	notFoundRes = toJSON(errorRes{notify.ErrNotFound.Error()})
-	unauthRes   = toJSON(errorRes{notify.ErrUnauthorizedAccess.Error()})
+	notFoundRes = toJSON(errorRes{notifiers.ErrNotFound.Error()})
+	unauthRes   = toJSON(errorRes{notifiers.ErrUnauthorizedAccess.Error()})
 	invalidRes  = toJSON(errorRes{"invalid query parameters"})
 )
 
@@ -61,15 +61,15 @@ func (tr testRequest) make() (*http.Response, error) {
 	return tr.client.Do(req)
 }
 
-func newService(tokens map[string]string) notify.Service {
+func newService(tokens map[string]string) notifiers.Service {
 	auth := mocks.NewAuth(tokens)
-	repo := mocks.NewRepo(make(map[string]notify.Subscription))
+	repo := mocks.NewRepo(make(map[string]notifiers.Subscription))
 	idp := uuid.NewMock()
 	notif := mocks.NewNotifier()
-	return notify.New(auth, repo, idp, notif)
+	return notifiers.New(auth, repo, idp, notif)
 }
 
-func newServer(svc notify.Service) *httptest.Server {
+func newServer(svc notifiers.Service) *httptest.Server {
 	mux := httpapi.MakeHandler(svc, mocktracer.New())
 	return httptest.NewServer(mux)
 }
@@ -84,15 +84,15 @@ func TestCreate(t *testing.T) {
 	ss := newServer(svc)
 	defer ss.Close()
 
-	sub := notify.Subscription{
+	sub := notifiers.Subscription{
 		Topic:   "topic",
 		Contact: contact1,
 	}
 
 	data := toJSON(sub)
 
-	emptyTopic := toJSON(notify.Subscription{Contact: contact1})
-	emptyContact := toJSON(notify.Subscription{Topic: "topic123"})
+	emptyTopic := toJSON(notifiers.Subscription{Contact: contact1})
+	emptyContact := toJSON(notifiers.Subscription{Topic: "topic123"})
 
 	cases := []struct {
 		desc        string
@@ -191,7 +191,7 @@ func TestView(t *testing.T) {
 	ss := newServer(svc)
 	defer ss.Close()
 
-	sub := notify.Subscription{
+	sub := notifiers.Subscription{
 		Topic:   "topic",
 		Contact: contact1,
 	}
@@ -268,7 +268,7 @@ func TestList(t *testing.T) {
 	var subs []subRes
 
 	for i := 0; i < numSubs; i++ {
-		sub := notify.Subscription{
+		sub := notifiers.Subscription{
 			Topic:   fmt.Sprintf("topic.subtopic.%d", i),
 			Contact: contact1,
 		}
@@ -384,7 +384,7 @@ func TestRemove(t *testing.T) {
 	ss := newServer(svc)
 	defer ss.Close()
 
-	sub := notify.Subscription{
+	sub := notifiers.Subscription{
 		Topic:   "topic",
 		Contact: contact1,
 	}

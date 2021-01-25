@@ -1,15 +1,15 @@
 // Copyright (c) Mainflux
 // SPDX-License-Identifier: Apache-2.0
 
-package notify_test
+package notifiers_test
 
 import (
 	"context"
 	"fmt"
 	"testing"
 
-	"github.com/mainflux/mainflux/consumers/notify"
-	"github.com/mainflux/mainflux/consumers/notify/mocks"
+	notifiers "github.com/mainflux/mainflux/consumers/notifiers"
+	"github.com/mainflux/mainflux/consumers/notifiers/mocks"
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/pkg/messaging"
 	"github.com/mainflux/mainflux/pkg/uuid"
@@ -24,12 +24,12 @@ const (
 	invalidUser  = "invalid@example.com"
 )
 
-func newService() notify.Service {
-	repo := mocks.NewRepo(make(map[string]notify.Subscription))
+func newService() notifiers.Service {
+	repo := mocks.NewRepo(make(map[string]notifiers.Subscription))
 	auth := mocks.NewAuth(map[string]string{exampleUser1: exampleUser1, exampleUser2: exampleUser2, invalidUser: invalidUser})
 	notifier := mocks.NewNotifier()
 	idp := uuid.NewMock()
-	return notify.New(auth, repo, idp, notifier)
+	return notifiers.New(auth, repo, idp, notifier)
 }
 
 func TestCreateSubscription(t *testing.T) {
@@ -38,30 +38,30 @@ func TestCreateSubscription(t *testing.T) {
 	cases := []struct {
 		desc  string
 		token string
-		sub   notify.Subscription
+		sub   notifiers.Subscription
 		id    string
 		err   error
 	}{
 		{
 			desc:  "test success",
 			token: exampleUser1,
-			sub:   notify.Subscription{Contact: exampleUser1, Topic: "valid.topic"},
+			sub:   notifiers.Subscription{Contact: exampleUser1, Topic: "valid.topic"},
 			id:    uuid.Prefix + fmt.Sprintf("%012d", 1),
 			err:   nil,
 		},
 		{
 			desc:  "test already existing",
 			token: exampleUser1,
-			sub:   notify.Subscription{Contact: exampleUser1, Topic: "valid.topic"},
+			sub:   notifiers.Subscription{Contact: exampleUser1, Topic: "valid.topic"},
 			id:    "",
-			err:   notify.ErrConflict,
+			err:   notifiers.ErrConflict,
 		},
 		{
 			desc:  "test unauthorized access",
 			token: "",
-			sub:   notify.Subscription{Contact: exampleUser1, Topic: "valid.topic"},
+			sub:   notifiers.Subscription{Contact: exampleUser1, Topic: "valid.topic"},
 			id:    "",
-			err:   notify.ErrUnauthorizedAccess,
+			err:   notifiers.ErrUnauthorizedAccess,
 		},
 	}
 
@@ -74,7 +74,7 @@ func TestCreateSubscription(t *testing.T) {
 
 func TestViewSubscription(t *testing.T) {
 	svc := newService()
-	sub := notify.Subscription{Contact: exampleUser1, Topic: "valid.topic"}
+	sub := notifiers.Subscription{Contact: exampleUser1, Topic: "valid.topic"}
 	id, err := svc.CreateSubscription(context.Background(), exampleUser1, sub)
 	require.Nil(t, err, "Saving a Subscription must succeed")
 	sub.ID = id
@@ -84,7 +84,7 @@ func TestViewSubscription(t *testing.T) {
 		desc  string
 		token string
 		id    string
-		sub   notify.Subscription
+		sub   notifiers.Subscription
 		err   error
 	}{
 		{
@@ -98,15 +98,15 @@ func TestViewSubscription(t *testing.T) {
 			desc:  "test not existing",
 			token: exampleUser1,
 			id:    "not_exist",
-			sub:   notify.Subscription{},
-			err:   notify.ErrNotFound,
+			sub:   notifiers.Subscription{},
+			err:   notifiers.ErrNotFound,
 		},
 		{
 			desc:  "test unauthorized access",
 			token: "",
 			id:    id,
-			sub:   notify.Subscription{},
-			err:   notify.ErrUnauthorizedAccess,
+			sub:   notifiers.Subscription{},
+			err:   notifiers.ErrUnauthorizedAccess,
 		},
 	}
 
@@ -119,9 +119,9 @@ func TestViewSubscription(t *testing.T) {
 
 func TestListSubscriptions(t *testing.T) {
 	svc := newService()
-	sub := notify.Subscription{Contact: exampleUser1, OwnerID: exampleUser1}
+	sub := notifiers.Subscription{Contact: exampleUser1, OwnerID: exampleUser1}
 	topic := "topic.subtopic"
-	var subs []notify.Subscription
+	var subs []notifiers.Subscription
 	for i := 0; i < total; i++ {
 		tmp := sub
 		token := exampleUser1
@@ -137,7 +137,7 @@ func TestListSubscriptions(t *testing.T) {
 		subs = append(subs, tmp)
 	}
 
-	var offsetSubs []notify.Subscription
+	var offsetSubs []notifiers.Subscription
 	for i := 20; i < 40; i += 2 {
 		offsetSubs = append(offsetSubs, subs[i])
 	}
@@ -145,20 +145,20 @@ func TestListSubscriptions(t *testing.T) {
 	cases := []struct {
 		desc     string
 		token    string
-		pageMeta notify.PageMetadata
-		page     notify.Page
+		pageMeta notifiers.PageMetadata
+		page     notifiers.Page
 		err      error
 	}{
 		{
 			desc:  "test success",
 			token: exampleUser1,
-			pageMeta: notify.PageMetadata{
+			pageMeta: notifiers.PageMetadata{
 				Offset: 0,
 				Limit:  3,
 			},
 			err: nil,
-			page: notify.Page{
-				PageMetadata: notify.PageMetadata{
+			page: notifiers.Page{
+				PageMetadata: notifiers.PageMetadata{
 					Offset: 0,
 					Limit:  3,
 				},
@@ -169,33 +169,33 @@ func TestListSubscriptions(t *testing.T) {
 		{
 			desc:  "test not existing",
 			token: exampleUser1,
-			pageMeta: notify.PageMetadata{
+			pageMeta: notifiers.PageMetadata{
 				Limit:   10,
 				Contact: "empty@example.com",
 			},
-			page: notify.Page{},
-			err:  notify.ErrNotFound,
+			page: notifiers.Page{},
+			err:  notifiers.ErrNotFound,
 		},
 		{
 			desc:  "test unauthorized access",
 			token: "",
-			pageMeta: notify.PageMetadata{
+			pageMeta: notifiers.PageMetadata{
 				Offset: 2,
 				Limit:  12,
 				Topic:  "topic.subtopic.13",
 			},
-			page: notify.Page{},
-			err:  notify.ErrUnauthorizedAccess,
+			page: notifiers.Page{},
+			err:  notifiers.ErrUnauthorizedAccess,
 		},
 		{
 			desc:  "test with topic",
 			token: exampleUser1,
-			pageMeta: notify.PageMetadata{
+			pageMeta: notifiers.PageMetadata{
 				Limit: 10,
 				Topic: fmt.Sprintf("%s.%d", topic, 4),
 			},
-			page: notify.Page{
-				PageMetadata: notify.PageMetadata{
+			page: notifiers.Page{
+				PageMetadata: notifiers.PageMetadata{
 					Limit: 10,
 					Topic: fmt.Sprintf("%s.%d", topic, 4),
 				},
@@ -207,13 +207,13 @@ func TestListSubscriptions(t *testing.T) {
 		{
 			desc:  "test with contact and offset",
 			token: exampleUser1,
-			pageMeta: notify.PageMetadata{
+			pageMeta: notifiers.PageMetadata{
 				Offset:  10,
 				Limit:   10,
 				Contact: exampleUser2,
 			},
-			page: notify.Page{
-				PageMetadata: notify.PageMetadata{
+			page: notifiers.Page{
+				PageMetadata: notifiers.PageMetadata{
 					Offset:  10,
 					Limit:   10,
 					Contact: exampleUser2,
@@ -234,7 +234,7 @@ func TestListSubscriptions(t *testing.T) {
 
 func TestRemoveSubscription(t *testing.T) {
 	svc := newService()
-	sub := notify.Subscription{Contact: exampleUser1, Topic: "valid.topic"}
+	sub := notifiers.Subscription{Contact: exampleUser1, Topic: "valid.topic"}
 	id, err := svc.CreateSubscription(context.Background(), exampleUser1, sub)
 	require.Nil(t, err, "Saving a Subscription must succeed")
 	sub.ID = id
@@ -262,7 +262,7 @@ func TestRemoveSubscription(t *testing.T) {
 			desc:  "test unauthorized access",
 			token: "",
 			id:    id,
-			err:   notify.ErrUnauthorizedAccess,
+			err:   notifiers.ErrUnauthorizedAccess,
 		},
 	}
 
@@ -274,7 +274,7 @@ func TestRemoveSubscription(t *testing.T) {
 
 func TestConsume(t *testing.T) {
 	svc := newService()
-	sub := notify.Subscription{
+	sub := notifiers.Subscription{
 		Contact: exampleUser1,
 		OwnerID: exampleUser1,
 		Topic:   "topic.subtopic",
@@ -315,7 +315,7 @@ func TestConsume(t *testing.T) {
 		{
 			desc: "test fail",
 			msg:  errMsg,
-			err:  notify.ErrNotify,
+			err:  notifiers.ErrNotify,
 		},
 	}
 

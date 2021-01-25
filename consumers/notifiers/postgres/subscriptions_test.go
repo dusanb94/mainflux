@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/mainflux/mainflux/consumers/notify"
-	"github.com/mainflux/mainflux/consumers/notify/postgres"
+	notifiers "github.com/mainflux/mainflux/consumers/notifiers"
+	"github.com/mainflux/mainflux/consumers/notifiers/postgres"
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +30,7 @@ func TestSave(t *testing.T) {
 	id2, err := idProvider.ID()
 	require.Nil(t, err, fmt.Sprintf("got unexpected error: %s", err))
 
-	sub1 := notify.Subscription{
+	sub1 := notifiers.Subscription{
 		OwnerID: id1,
 		ID:      id1,
 		Contact: owner,
@@ -42,7 +42,7 @@ func TestSave(t *testing.T) {
 
 	cases := []struct {
 		desc string
-		sub  notify.Subscription
+		sub  notifiers.Subscription
 		id   string
 		err  error
 	}{
@@ -56,7 +56,7 @@ func TestSave(t *testing.T) {
 			desc: "save duplicate",
 			sub:  sub2,
 			id:   "",
-			err:  notify.ErrConflict,
+			err:  notifiers.ErrConflict,
 		},
 	}
 
@@ -75,7 +75,7 @@ func TestView(t *testing.T) {
 	id, err := idProvider.ID()
 	require.Nil(t, err, fmt.Sprintf("got an error creating id: %s", err))
 
-	sub := notify.Subscription{
+	sub := notifiers.Subscription{
 		OwnerID: id,
 		ID:      id,
 		Contact: owner,
@@ -88,7 +88,7 @@ func TestView(t *testing.T) {
 
 	cases := []struct {
 		desc string
-		sub  notify.Subscription
+		sub  notifiers.Subscription
 		id   string
 		err  error
 	}{
@@ -100,9 +100,9 @@ func TestView(t *testing.T) {
 		},
 		{
 			desc: "retrieve not existing",
-			sub:  notify.Subscription{},
+			sub:  notifiers.Subscription{},
 			id:   "non-existing",
-			err:  notify.ErrNotFound,
+			err:  notifiers.ErrNotFound,
 		},
 	}
 
@@ -121,12 +121,12 @@ func TestRetrieveAll(t *testing.T) {
 	dbMiddleware := postgres.NewDatabase(db)
 	repo := postgres.New(dbMiddleware)
 
-	var subs []notify.Subscription
+	var subs []notifiers.Subscription
 
 	for i := 0; i < numSubs; i++ {
 		id, err := idProvider.ID()
 		require.Nil(t, err, fmt.Sprintf("got unexpected error: %s", err))
-		sub := notify.Subscription{
+		sub := notifiers.Subscription{
 			OwnerID: "owner",
 			ID:      id,
 			Contact: owner,
@@ -141,19 +141,19 @@ func TestRetrieveAll(t *testing.T) {
 
 	cases := []struct {
 		desc     string
-		pageMeta notify.PageMetadata
-		page     notify.Page
+		pageMeta notifiers.PageMetadata
+		page     notifiers.Page
 		err      error
 	}{
 		{
 			desc: "retrieve successfully",
-			pageMeta: notify.PageMetadata{
+			pageMeta: notifiers.PageMetadata{
 				Offset: 10,
 				Limit:  2,
 			},
-			page: notify.Page{
+			page: notifiers.Page{
 				Total: numSubs,
-				PageMetadata: notify.PageMetadata{
+				PageMetadata: notifiers.PageMetadata{
 					Offset: 10,
 					Limit:  2,
 				},
@@ -163,14 +163,14 @@ func TestRetrieveAll(t *testing.T) {
 		},
 		{
 			desc: "retrieve with contact",
-			pageMeta: notify.PageMetadata{
+			pageMeta: notifiers.PageMetadata{
 				Offset:  10,
 				Limit:   2,
 				Contact: owner,
 			},
-			page: notify.Page{
+			page: notifiers.Page{
 				Total: numSubs,
-				PageMetadata: notify.PageMetadata{
+				PageMetadata: notifiers.PageMetadata{
 					Offset:  10,
 					Limit:   2,
 					Contact: owner,
@@ -181,14 +181,14 @@ func TestRetrieveAll(t *testing.T) {
 		},
 		{
 			desc: "retrieve with topic",
-			pageMeta: notify.PageMetadata{
+			pageMeta: notifiers.PageMetadata{
 				Offset: 0,
 				Limit:  2,
 				Topic:  "list.subtopic.11",
 			},
-			page: notify.Page{
+			page: notifiers.Page{
 				Total: 1,
-				PageMetadata: notify.PageMetadata{
+				PageMetadata: notifiers.PageMetadata{
 					Offset: 0,
 					Limit:  2,
 					Topic:  "list.subtopic.11",
@@ -199,13 +199,13 @@ func TestRetrieveAll(t *testing.T) {
 		},
 		{
 			desc: "retrieve with no limit",
-			pageMeta: notify.PageMetadata{
+			pageMeta: notifiers.PageMetadata{
 				Offset: 0,
 				Limit:  -1,
 			},
-			page: notify.Page{
+			page: notifiers.Page{
 				Total: numSubs,
-				PageMetadata: notify.PageMetadata{
+				PageMetadata: notifiers.PageMetadata{
 					Limit: -1,
 				},
 				Subscriptions: subs,
@@ -226,7 +226,7 @@ func TestRemove(t *testing.T) {
 	repo := postgres.New(dbMiddleware)
 	id, err := idProvider.ID()
 	require.Nil(t, err, fmt.Sprintf("got an error creating id: %s", err))
-	sub := notify.Subscription{
+	sub := notifiers.Subscription{
 		OwnerID: id,
 		ID:      id,
 		Contact: owner,

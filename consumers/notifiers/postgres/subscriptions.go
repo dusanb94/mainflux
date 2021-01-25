@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	"github.com/lib/pq"
-	"github.com/mainflux/mainflux/consumers/notify"
+	notifiers "github.com/mainflux/mainflux/consumers/notifiers"
 	"github.com/mainflux/mainflux/pkg/errors"
 )
 
-var _ notify.SubscriptionsRepository = (*subscriptionsRepo)(nil)
+var _ notifiers.SubscriptionsRepository = (*subscriptionsRepo)(nil)
 
 const errDuplicate = "unique_violation"
 
@@ -23,13 +23,13 @@ type subscriptionsRepo struct {
 }
 
 // New instantiates a PostgreSQL implementation of Subscriptions repository.
-func New(db Database) notify.SubscriptionsRepository {
+func New(db Database) notifiers.SubscriptionsRepository {
 	return &subscriptionsRepo{
 		db: db,
 	}
 }
 
-func (repo subscriptionsRepo) Save(ctx context.Context, sub notify.Subscription) (string, error) {
+func (repo subscriptionsRepo) Save(ctx context.Context, sub notifiers.Subscription) (string, error) {
 	q := `INSERT INTO subscriptions (id, owner_id, contact, topic) VALUES (:id, :owner_id, :contact, :topic) RETURNING id`
 
 	dbSub := dbSubscription{
@@ -42,30 +42,30 @@ func (repo subscriptionsRepo) Save(ctx context.Context, sub notify.Subscription)
 	row, err := repo.db.NamedQueryContext(ctx, q, dbSub)
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code.Name() == errDuplicate {
-			return "", errors.Wrap(notify.ErrConflict, err)
+			return "", errors.Wrap(notifiers.ErrConflict, err)
 		}
-		return "", errors.Wrap(notify.ErrSave, err)
+		return "", errors.Wrap(notifiers.ErrSave, err)
 	}
 	defer row.Close()
 
 	return sub.ID, nil
 }
 
-func (repo subscriptionsRepo) Retrieve(ctx context.Context, id string) (notify.Subscription, error) {
+func (repo subscriptionsRepo) Retrieve(ctx context.Context, id string) (notifiers.Subscription, error) {
 	q := `SELECT id, owner_id, contact, topic FROM subscriptions WHERE id = $1`
 	sub := dbSubscription{}
 	if err := repo.db.QueryRowxContext(ctx, q, id).StructScan(&sub); err != nil {
 		if err == sql.ErrNoRows {
-			return notify.Subscription{}, errors.Wrap(notify.ErrNotFound, err)
+			return notifiers.Subscription{}, errors.Wrap(notifiers.ErrNotFound, err)
 
 		}
-		return notify.Subscription{}, errors.Wrap(notify.ErrSelectEntity, err)
+		return notifiers.Subscription{}, errors.Wrap(notifiers.ErrSelectEntity, err)
 	}
 
 	return fromDBSub(sub), nil
 }
 
-func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMetadata) (notify.Page, error) {
+func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notifiers.PageMetadata) (notifiers.Page, error) {
 	q := `SELECT id, owner_id, contact, topic FROM subscriptions`
 	args := make(map[string]interface{})
 	if pm.Topic != "" {
@@ -92,30 +92,30 @@ func (repo subscriptionsRepo) RetrieveAll(ctx context.Context, pm notify.PageMet
 
 	rows, err := repo.db.NamedQueryContext(ctx, q, args)
 	if err != nil {
-		return notify.Page{}, errors.Wrap(notify.ErrSelectEntity, err)
+		return notifiers.Page{}, errors.Wrap(notifiers.ErrSelectEntity, err)
 	}
 	defer rows.Close()
 
-	var subs []notify.Subscription
+	var subs []notifiers.Subscription
 	for rows.Next() {
 		sub := dbSubscription{}
 		if err := rows.StructScan(&sub); err != nil {
-			return notify.Page{}, errors.Wrap(notify.ErrSelectEntity, err)
+			return notifiers.Page{}, errors.Wrap(notifiers.ErrSelectEntity, err)
 		}
 		subs = append(subs, fromDBSub(sub))
 	}
 
 	if len(subs) == 0 {
-		return notify.Page{}, notify.ErrNotFound
+		return notifiers.Page{}, notifiers.ErrNotFound
 	}
 
 	cq := fmt.Sprintf(`SELECT COUNT(*) FROM subscriptions %s`, condition)
 	total, err := total(ctx, repo.db, cq, args)
 	if err != nil {
-		return notify.Page{}, errors.Wrap(notify.ErrSelectEntity, err)
+		return notifiers.Page{}, errors.Wrap(notifiers.ErrSelectEntity, err)
 	}
 
-	ret := notify.Page{
+	ret := notifiers.Page{
 		PageMetadata:  pm,
 		Total:         total,
 		Subscriptions: subs,
@@ -128,7 +128,7 @@ func (repo subscriptionsRepo) Remove(ctx context.Context, id string) error {
 	q := `DELETE from subscriptions WHERE id = $1`
 
 	if r := repo.db.QueryRowxContext(ctx, q, id); r.Err() != nil {
-		return errors.Wrap(notify.ErrRemoveEntity, r.Err())
+		return errors.Wrap(notifiers.ErrRemoveEntity, r.Err())
 	}
 	return nil
 }
@@ -155,8 +155,8 @@ type dbSubscription struct {
 	Topic   string `db:"topic"`
 }
 
-func fromDBSub(sub dbSubscription) notify.Subscription {
-	return notify.Subscription{
+func fromDBSub(sub dbSubscription) notifiers.Subscription {
+	return notifiers.Subscription{
 		ID:      sub.ID,
 		OwnerID: sub.OwnerID,
 		Contact: sub.Contact,

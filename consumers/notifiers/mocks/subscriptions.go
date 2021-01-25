@@ -8,32 +8,32 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/mainflux/mainflux/consumers/notify"
+	notifiers "github.com/mainflux/mainflux/consumers/notifiers"
 )
 
-var _ notify.SubscriptionsRepository = (*subRepoMock)(nil)
+var _ notifiers.SubscriptionsRepository = (*subRepoMock)(nil)
 
 type subRepoMock struct {
 	mu   sync.Mutex
-	subs map[string]notify.Subscription
+	subs map[string]notifiers.Subscription
 }
 
 // NewRepo returns a new Subscriptions repository mock.
-func NewRepo(subs map[string]notify.Subscription) notify.SubscriptionsRepository {
+func NewRepo(subs map[string]notifiers.Subscription) notifiers.SubscriptionsRepository {
 	return &subRepoMock{
 		subs: subs,
 	}
 }
 
-func (srm *subRepoMock) Save(_ context.Context, sub notify.Subscription) (string, error) {
+func (srm *subRepoMock) Save(_ context.Context, sub notifiers.Subscription) (string, error) {
 	srm.mu.Lock()
 	defer srm.mu.Unlock()
 	if _, ok := srm.subs[sub.ID]; ok {
-		return "", notify.ErrConflict
+		return "", notifiers.ErrConflict
 	}
 	for _, s := range srm.subs {
 		if s.Contact == sub.Contact && s.Topic == sub.Topic {
-			return "", notify.ErrConflict
+			return "", notifiers.ErrConflict
 		}
 	}
 
@@ -41,17 +41,17 @@ func (srm *subRepoMock) Save(_ context.Context, sub notify.Subscription) (string
 	return sub.ID, nil
 }
 
-func (srm *subRepoMock) Retrieve(_ context.Context, id string) (notify.Subscription, error) {
+func (srm *subRepoMock) Retrieve(_ context.Context, id string) (notifiers.Subscription, error) {
 	srm.mu.Lock()
 	defer srm.mu.Unlock()
 	ret, ok := srm.subs[id]
 	if !ok {
-		return notify.Subscription{}, notify.ErrNotFound
+		return notifiers.Subscription{}, notifiers.ErrNotFound
 	}
 	return ret, nil
 }
 
-func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) (notify.Page, error) {
+func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notifiers.PageMetadata) (notifiers.Page, error) {
 	srm.mu.Lock()
 	defer srm.mu.Unlock()
 
@@ -62,7 +62,7 @@ func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) (
 	}
 	sort.Strings(keys)
 
-	var subs []notify.Subscription
+	var subs []notifiers.Subscription
 	var total int
 	offset := int(pm.Offset)
 	for _, k := range keys {
@@ -100,10 +100,10 @@ func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) (
 	}
 
 	if len(subs) == 0 {
-		return notify.Page{}, notify.ErrNotFound
+		return notifiers.Page{}, notifiers.ErrNotFound
 	}
 
-	ret := notify.Page{
+	ret := notifiers.Page{
 		PageMetadata:  pm,
 		Total:         uint(total),
 		Subscriptions: subs,
@@ -112,7 +112,7 @@ func (srm *subRepoMock) RetrieveAll(_ context.Context, pm notify.PageMetadata) (
 	return ret, nil
 }
 
-func appendSubs(subs []notify.Subscription, sub notify.Subscription, max int) []notify.Subscription {
+func appendSubs(subs []notifiers.Subscription, sub notifiers.Subscription, max int) []notifiers.Subscription {
 	if len(subs) < max || max == -1 {
 		subs = append(subs, sub)
 	}
