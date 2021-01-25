@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	errInvalidTopic   = errors.New("invalid Subscritpion topic")
-	errInvalidContact = errors.New("invalid Subscritpion contact")
+	errInvalidTopic   = errors.New("invalid Subscription topic")
+	errInvalidContact = errors.New("invalid Subscription contact")
 	errNotFound       = errors.New("invalid or empty Subscription id")
 )
 

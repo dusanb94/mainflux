@@ -57,7 +57,6 @@ func (repo subscriptionsRepo) Retrieve(ctx context.Context, id string) (notifier
 	if err := repo.db.QueryRowxContext(ctx, q, id).StructScan(&sub); err != nil {
 		if err == sql.ErrNoRows {
 			return notifiers.Subscription{}, errors.Wrap(notifiers.ErrNotFound, err)
-
 		}
 		return notifiers.Subscription{}, errors.Wrap(notifiers.ErrSelectEntity, err)
 	}
