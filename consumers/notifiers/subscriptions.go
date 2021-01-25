@@ -38,9 +38,9 @@ type SubscriptionsRepository interface {
 	// Retrieve retrieves the subscription for the given id.
 	Retrieve(ctx context.Context, id string) (Subscription, error)
 
-	// RetrieveAll retrieves all the subscriptions for the given metadata.
+	// RetrieveAll retrieves all the subscriptions for the given page metadata.
 	RetrieveAll(ctx context.Context, pm PageMetadata) (Page, error)
 
-	// Remove removes the subscription having the provided an ID.
+	// Remove removes the subscription for the given ID.
 	Remove(ctx context.Context, id string) error
 }

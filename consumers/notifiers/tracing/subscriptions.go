@@ -13,8 +13,10 @@ import (
 )
 
 const (
-	saveOp            = "save_op"
-	retrieveByEmailOp = "retrieve_by_email"
+	saveOp        = "save_op"
+	retrieveOp    = "retrieve_op"
+	retrieveAllOp = "retrieve_all_op"
+	removeOp      = "remove_op"
 )
 
 var _ notifiers.SubscriptionsRepository = (*subRepositoryMiddleware)(nil)
@@ -42,7 +44,7 @@ func (urm subRepositoryMiddleware) Save(ctx context.Context, sub notifiers.Subsc
 }
 
 func (urm subRepositoryMiddleware) Retrieve(ctx context.Context, id string) (notifiers.Subscription, error) {
-	span := createSpan(ctx, urm.tracer, saveOp)
+	span := createSpan(ctx, urm.tracer, retrieveOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
@@ -50,7 +52,7 @@ func (urm subRepositoryMiddleware) Retrieve(ctx context.Context, id string) (not
 }
 
 func (urm subRepositoryMiddleware) RetrieveAll(ctx context.Context, pm notifiers.PageMetadata) (notifiers.Page, error) {
-	span := createSpan(ctx, urm.tracer, retrieveByEmailOp)
+	span := createSpan(ctx, urm.tracer, retrieveAllOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
@@ -58,7 +60,7 @@ func (urm subRepositoryMiddleware) RetrieveAll(ctx context.Context, pm notifiers
 }
 
 func (urm subRepositoryMiddleware) Remove(ctx context.Context, id string) error {
-	span := createSpan(ctx, urm.tracer, retrieveByEmailOp)
+	span := createSpan(ctx, urm.tracer, removeOp)
 	defer span.Finish()
 	ctx = opentracing.ContextWithSpan(ctx, span)
 
