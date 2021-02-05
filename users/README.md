@@ -17,7 +17,7 @@ following table. Note that any unset variables will be replaced with their
 default values.
 
 | Variable                  | Description                                                             | Default        |
-|---------------------------|-------------------------------------------------------------------------|----------------|
+| ------------------------- | ----------------------------------------------------------------------- | -------------- |
 | MF_USERS_LOG_LEVEL        | Log level for Users (debug, info, warn, error)                          | error          |
 | MF_USERS_DB_HOST          | Database host address                                                   | localhost      |
 | MF_USERS_DB_PORT          | Database host port                                                      | 5432           |
@@ -38,7 +38,8 @@ default values.
 | MF_EMAIL_HOST             | Mail server host                                                        | localhost      |
 | MF_EMAIL_PORT             | Mail server port                                                        | 25             |
 | MF_EMAIL_USERNAME         | Mail server username                                                    |                |
-| MF_EMAIL_PASSWORD         | Mail server password                                                    |                |
+| MF_EMAIL_PASSWORD         | Mail server password for Basic authentication                           |                |
+| MF_EMAIL_SECRET           | Mail server secret for CRAM-MD5 authentication                          |                |
 | MF_EMAIL_FROM_ADDRESS     | Email "from" address                                                    |                |
 | MF_EMAIL_FROM_NAME        | Email "from" name                                                       |                |
 | MF_EMAIL_TEMPLATE         | Email template for sending emails with password reset link              | email.tmpl     |

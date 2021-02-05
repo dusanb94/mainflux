@@ -58,6 +58,7 @@ const (
 	defEmailPort        = "25"
 	defEmailUsername    = "root"
 	defEmailPassword    = ""
+	defEmailSecret      = ""
 	defEmailFromAddress = ""
 	defEmailFromName    = ""
 	defEmailTemplate    = "email.tmpl"
@@ -95,6 +96,7 @@ const (
 	envEmailPort        = "MF_EMAIL_PORT"
 	envEmailUsername    = "MF_EMAIL_USERNAME"
 	envEmailPassword    = "MF_EMAIL_PASSWORD"
+	envEmailSecret      = "MF_EMAIL_SECRET"
 	envEmailFromAddress = "MF_EMAIL_FROM_ADDRESS"
 	envEmailFromName    = "MF_EMAIL_FROM_NAME"
 	envEmailLogLevel    = "MF_EMAIL_LOG_LEVEL"
@@ -195,6 +197,7 @@ func loadConfig() config {
 		Port:        mainflux.Env(envEmailPort, defEmailPort),
 		Username:    mainflux.Env(envEmailUsername, defEmailUsername),
 		Password:    mainflux.Env(envEmailPassword, defEmailPassword),
+		Secret:      mainflux.Env(envEmailSecret, defEmailSecret),
 		Template:    mainflux.Env(envEmailTemplate, defEmailTemplate),
 	}
 
