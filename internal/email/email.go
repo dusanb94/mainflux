@@ -32,7 +32,6 @@ type emailTemplate struct {
 
 // Config email agent configuration.
 type Config struct {
-	Driver      string
 	Host        string
 	Port        string
 	Username    string

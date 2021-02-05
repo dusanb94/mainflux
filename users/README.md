@@ -34,7 +34,6 @@ default values.
 | MF_USERS_ADMIN_EMAIL      | Default user, created on startup                                        |                |
 | MF_USERS_ADMIN_PASSWORD   | Default user password, created on startup                               |                |
 | MF_JAEGER_URL             | Jaeger server URL                                                       | localhost:6831 |
-| MF_EMAIL_DRIVER           | Mail server driver, mail server for sending reset password token        | smtp           |
 | MF_EMAIL_HOST             | Mail server host                                                        | localhost      |
 | MF_EMAIL_PORT             | Mail server port                                                        | 25             |
 | MF_EMAIL_USERNAME         | Mail server username                                                    |                |

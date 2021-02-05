@@ -53,7 +53,6 @@ const (
 	defServerKey     = ""
 	defJaegerURL     = ""
 
-	defEmailDriver      = "smtp"
 	defEmailHost        = "localhost"
 	defEmailPort        = "25"
 	defEmailUsername    = "root"
@@ -91,7 +90,6 @@ const (
 	envAdminEmail    = "MF_USERS_ADMIN_EMAIL"
 	envAdminPassword = "MF_USERS_ADMIN_PASSWORD"
 
-	envEmailDriver      = "MF_EMAIL_DRIVER"
 	envEmailHost        = "MF_EMAIL_HOST"
 	envEmailPort        = "MF_EMAIL_PORT"
 	envEmailUsername    = "MF_EMAIL_USERNAME"
@@ -190,7 +188,6 @@ func loadConfig() config {
 	}
 
 	emailConf := email.Config{
-		Driver:      mainflux.Env(envEmailDriver, defEmailDriver),
 		FromAddress: mainflux.Env(envEmailFromAddress, defEmailFromAddress),
 		FromName:    mainflux.Env(envEmailFromName, defEmailFromName),
 		Host:        mainflux.Env(envEmailHost, defEmailHost),

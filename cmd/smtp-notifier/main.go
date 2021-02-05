@@ -54,7 +54,6 @@ const (
 	defJaegerURL     = ""
 	defNatsURL       = "nats://localhost:4222"
 
-	defEmailDriver      = "smtp"
 	defEmailHost        = "localhost"
 	defEmailPort        = "25"
 	defEmailUsername    = "root"
@@ -86,7 +85,6 @@ const (
 	envJaegerURL     = "MF_JAEGER_URL"
 	envNatsURL       = "MF_NATS_URL"
 
-	envEmailDriver      = "MF_EMAIL_DRIVER"
 	envEmailHost        = "MF_EMAIL_HOST"
 	envEmailPort        = "MF_EMAIL_PORT"
 	envEmailUsername    = "MF_EMAIL_USERNAME"
@@ -193,7 +191,6 @@ func loadConfig() config {
 	}
 
 	emailConf := email.Config{
-		Driver:      mainflux.Env(envEmailDriver, defEmailDriver),
 		FromAddress: mainflux.Env(envEmailFromAddress, defEmailFromAddress),
 		FromName:    mainflux.Env(envEmailFromName, defEmailFromName),
 		Host:        mainflux.Env(envEmailHost, defEmailHost),
