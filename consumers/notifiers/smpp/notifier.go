@@ -9,7 +9,9 @@ import (
 	"github.com/fiorix/go-smpp/smpp"
 	"github.com/fiorix/go-smpp/smpp/pdu/pdufield"
 	"github.com/fiorix/go-smpp/smpp/pdu/pdutext"
+	"github.com/mainflux/mainflux/consumers/notifiers"
 	"github.com/mainflux/mainflux/consumers/notify"
+	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/pkg/messaging"
 )
 
@@ -36,16 +38,19 @@ func (n *notifier) Notify(from string, to []string, msg messaging.Message) error
 	}
 
 	_, err := n.t.Submit(&smpp.ShortMessage{
-		Src:      "",
-		Dst:      "",
+		Src:      from,
+		DstList:  to,
 		Text:     pdutext.Raw(msg.Payload),
-		Register: pdufield.NoDeliveryReceipt,
-		// 	TLVFields: pdutlv.Fields{
+		Register: pdufield.FailureDeliveryReceipt,
+		// TLVFields: pdutlv.Fields{
 		// 		pdutlv.TagReceiptedMessageID: pdutlv.CString(r.FormValue("msgId")),
 		// 	},
 	})
 
 	// content := fmt.Sprintf(contentTemplate, msg.Publisher, msg.Protocol, values)
+	if err != nil {
+		return errors.Wrap(notifiers.ErrNotify, err)
+	}
 
-	return err
+	return nil
 }
