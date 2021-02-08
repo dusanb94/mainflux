@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -191,19 +190,12 @@ func readStringQuery(r *http.Request, key string) (string, error) {
 }
 
 func readMetadataQuery(r *http.Request, key string) (map[string]interface{}, error) {
-	q, err := url.ParseQuery(r.URL.RawQuery)
-	if err != nil {
-		return nil, errInvalidQueryParams
-	}
-	vals, ok := q[key]
-	if !ok {
+	md := r.URL.Query().Get(key)
+	if md == "" {
 		return nil, nil
 	}
-	if len(vals) > 1 {
-		return nil, errInvalidQueryParams
-	}
 	m := make(map[string]interface{})
-	if err := json.Unmarshal([]byte(vals[0]), &m); err != nil {
+	if err := json.Unmarshal([]byte(md), &m); err != nil {
 		return nil, errors.Wrap(errInvalidQueryParams, err)
 	}
 	return m, nil
