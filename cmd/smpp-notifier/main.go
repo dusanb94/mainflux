@@ -15,7 +15,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fiorix/go-smpp/smpp"
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 	"github.com/jmoiron/sqlx"
 	"github.com/mainflux/mainflux"
@@ -24,12 +23,9 @@ import (
 	"github.com/mainflux/mainflux/consumers/notifiers"
 	"github.com/mainflux/mainflux/consumers/notifiers/api"
 	"github.com/mainflux/mainflux/consumers/notifiers/postgres"
-	"github.com/mainflux/mainflux/consumers/notifiers/smpp"
 
 	mfsmpp "github.com/mainflux/mainflux/consumers/notifiers/smpp"
-	"github.com/mainflux/mainflux/consumers/notifiers/smtp"
 	"github.com/mainflux/mainflux/consumers/notifiers/tracing"
-	"github.com/mainflux/mainflux/internal/email"
 	"github.com/mainflux/mainflux/logger"
 	"github.com/mainflux/mainflux/pkg/messaging/nats"
 	"github.com/mainflux/mainflux/pkg/ulid"
@@ -58,14 +54,14 @@ const (
 	defJaegerURL     = ""
 	defNatsURL       = "nats://localhost:4222"
 
-	defEmailHost        = "localhost"
-	defEmailPort        = "25"
-	defEmailUsername    = "root"
-	defEmailPassword    = ""
-	defEmailSecret      = ""
-	defEmailFromAddress = ""
-	defEmailFromName    = ""
-	defEmailTemplate    = "email.tmpl"
+	defSmppAddress    = ""
+	defSmppUsername   = ""
+	defSmppPassword   = ""
+	defSmppSystemType = ""
+	defSmppSrcAddrTON = "0"
+	defSmppDstAddrTON = "0"
+	defSmppSrcAddrNPI = "0"
+	defSmppDstAddrNPI = "0"
 
 	defAuthTLS     = "false"
 	defAuthCACerts = ""
@@ -89,14 +85,14 @@ const (
 	envJaegerURL     = "MF_JAEGER_URL"
 	envNatsURL       = "MF_NATS_URL"
 
-	envEmailHost        = "MF_EMAIL_HOST"
-	envEmailPort        = "MF_EMAIL_PORT"
-	envEmailUsername    = "MF_EMAIL_USERNAME"
-	envEmailPassword    = "MF_EMAIL_PASSWORD"
-	envEmailSecret      = "MF_EMAIL_SECRET"
-	envEmailFromAddress = "MF_EMAIL_FROM_ADDRESS"
-	envEmailFromName    = "MF_EMAIL_FROM_NAME"
-	envEmailTemplate    = "MF_EMAIL_TEMPLATE"
+	envSmppAddress    = "MF_SMPP_ADDRESS"
+	envSmppUsername   = "MF_SMPP_USERNAME"
+	envSmppPassword   = "MF_SMPP_PASSWORD"
+	envSmppSystemType = "MF_SMPP_SYSTEM_TYPE"
+	envSmppSrcAddrTON = "MF_SMPP_SRC_ADDR_TON"
+	envSmppDstAddrTON = "MF_SMPP_DST_ADDR_TON"
+	envSmppSrcAddrNPI = "MF_SMPP_SRC_ADDR_NPI"
+	envSmppDstAddrNPI = "MF_SMPP_DST_ADDR_NPI"
 
 	envAuthTLS     = "MF_AUTH_CLIENT_TLS"
 	envAuthCACerts = "MF_AUTH_CA_CERTS"
@@ -109,7 +105,7 @@ type config struct {
 	configPath  string
 	logLevel    string
 	dbConfig    postgres.Config
-	emailConf   mfsmpp.Config
+	smppConf    mfsmpp.Config
 	httpPort    string
 	serverCert  string
 	serverKey   string
@@ -194,15 +190,32 @@ func loadConfig() config {
 		SSLRootCert: mainflux.Env(envDBSSLRootCert, defDBSSLRootCert),
 	}
 
-	emailConf := email.Config{
-		FromAddress: mainflux.Env(envEmailFromAddress, defEmailFromAddress),
-		FromName:    mainflux.Env(envEmailFromName, defEmailFromName),
-		Host:        mainflux.Env(envEmailHost, defEmailHost),
-		Port:        mainflux.Env(envEmailPort, defEmailPort),
-		Username:    mainflux.Env(envEmailUsername, defEmailUsername),
-		Password:    mainflux.Env(envEmailPassword, defEmailPassword),
-		Secret:      mainflux.Env(envEmailSecret, defEmailSecret),
-		Template:    mainflux.Env(envEmailTemplate, defEmailTemplate),
+	saton, err := strconv.ParseUint(mainflux.Env(envSmppSrcAddrTON, defSmppSrcAddrTON), 10, 8)
+	if err != nil {
+		log.Fatalf("Invalid value passed for %s", envSmppSrcAddrTON)
+	}
+	daton, err := strconv.ParseUint(mainflux.Env(envSmppDstAddrTON, defSmppDstAddrTON), 10, 8)
+	if err != nil {
+		log.Fatalf("Invalid value passed for %s", envSmppDstAddrTON)
+	}
+	sanpi, err := strconv.ParseUint(mainflux.Env(envSmppSrcAddrNPI, defSmppSrcAddrNPI), 10, 8)
+	if err != nil {
+		log.Fatalf("Invalid value passed for %s", envSmppSrcAddrNPI)
+	}
+	danpi, err := strconv.ParseUint(mainflux.Env(envSmppDstAddrNPI, defSmppDstAddrNPI), 10, 8)
+	if err != nil {
+		log.Fatalf("Invalid value passed for %s", envSmppDstAddrNPI)
+	}
+
+	smppConf := mfsmpp.Config{
+		Address:       mainflux.Env(envSmppAddress, defSmppAddress),
+		Username:      mainflux.Env(envSmppUsername, defSmppUsername),
+		Password:      mainflux.Env(envSmppPassword, defSmppPassword),
+		SystemType:    mainflux.Env(envSmppSystemType, defSmppSystemType),
+		SourceAddrTON: uint8(saton),
+		DestAddrTON:   uint8(daton),
+		SourceAddrNPI: uint8(sanpi),
+		DestAddrNPI:   uint8(danpi),
 	}
 
 	return config{
@@ -210,7 +223,7 @@ func loadConfig() config {
 		natsURL:     mainflux.Env(envNatsURL, defNatsURL),
 		configPath:  mainflux.Env(envConfigPath, defConfigPath),
 		dbConfig:    dbConfig,
-		emailConf:   emailConf,
+		smppConf:    smppConf,
 		httpPort:    mainflux.Env(envHTTPPort, defHTTPPort),
 		serverCert:  mainflux.Env(envServerCert, defServerCert),
 		serverKey:   mainflux.Env(envServerKey, defServerKey),
@@ -285,15 +298,7 @@ func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthServic
 	database := postgres.NewDatabase(db)
 	repo := tracing.New(postgres.New(database), tracer)
 	idp := ulid.New()
-
-	agent, err := email.New(&c.emailConf)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to create email agent: %s", err))
-		os.Exit(1)
-	}
-	t := &smpp.Transmitter{}
-	mfsmpp.New(t)
-	notifier := smtp.New(agent)
+	notifier := mfsmpp.New(c.smppConf)
 	svc := notifiers.New(auth, repo, idp, notifier)
 	svc = api.LoggingMiddleware(svc, logger)
 	svc = api.MetricsMiddleware(

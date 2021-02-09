@@ -5,18 +5,17 @@ package smpp
 
 import (
 	"crypto/tls"
-	"time"
 )
 
 // Config represents SMPP transmitter configuration.
 type Config struct {
-	Addr               string        // Server address in form of host:port.
-	User               string        // Username.
-	Passwd             string        // Password.
-	SystemType         string        // System type, default empty.
-	EnquireLink        time.Duration // Enquire link interval, default 10s.
-	EnquireLinkTimeout time.Duration // Time after last EnquireLink response when connection considered down
-	RespTimeout        time.Duration // Response timeout, default 1s.
-	BindInterval       time.Duration // Binding retry interval
-	TLS                *tls.Config   // TLS client settings, optional.
+	Address       string
+	Username      string
+	Password      string
+	SystemType    string
+	SourceAddrTON uint8
+	SourceAddrNPI uint8
+	DestAddrTON   uint8
+	DestAddrNPI   uint8
+	TLS           *tls.Config
 }

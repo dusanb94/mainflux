@@ -24,13 +24,31 @@ var _ notifiers.Notifier = (*notifier)(nil)
 var fields = [...]string{"s_leakage", "s_blocked", "s_magnet", "s_blowout", "ALM", "magnet"}
 
 type notifier struct {
-	t  *smpp.Transmitter
-	tr transformers.Transformer
+	t             *smpp.Transmitter
+	tr            transformers.Transformer
+	sourceAddrTON uint8
+	sourceAddrNPI uint8
+	destAddrTON   uint8
+	destAddrNPI   uint8
 }
 
 // New instantiates SMTP message notifier.
-func New(t *smpp.Transmitter) notifiers.Notifier {
-	return &notifier{t: t, tr: json.New()}
+func New(cfg Config) notifiers.Notifier {
+	t := &smpp.Transmitter{
+		Addr:       cfg.Address,
+		User:       cfg.Username,
+		Passwd:     cfg.Password,
+		SystemType: cfg.SystemType,
+	}
+	ret := &notifier{
+		t:             t,
+		tr:            json.New(),
+		sourceAddrTON: cfg.SourceAddrTON,
+		destAddrTON:   cfg.DestAddrTON,
+		sourceAddrNPI: cfg.SourceAddrNPI,
+		destAddrNPI:   cfg.DestAddrNPI,
+	}
+	return ret
 }
 
 func (n *notifier) Notify(from string, to []string, msg messaging.Message) error {
@@ -44,10 +62,14 @@ func (n *notifier) Notify(from string, to []string, msg messaging.Message) error
 	}
 
 	send := &smpp.ShortMessage{
-		Src:      from,
-		DstList:  to,
-		Text:     pdutext.Raw(msg.Payload),
-		Register: pdufield.FailureDeliveryReceipt,
+		Src:           from,
+		DstList:       to,
+		SourceAddrTON: n.sourceAddrTON,
+		DestAddrTON:   n.destAddrTON,
+		SourceAddrNPI: n.sourceAddrNPI,
+		DestAddrNPI:   n.destAddrNPI,
+		Text:          pdutext.Raw(msg.Payload),
+		Register:      pdufield.FailureDeliveryReceipt,
 	}
 
 	switch t := m.(type) {
