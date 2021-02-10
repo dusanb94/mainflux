@@ -24,6 +24,7 @@ default values.
 | MF_SMTP_NOTIFIER_PORT             | HTTP server port                                                        | 8180                  |
 | MF_SMTP_NOTIFIER_SERVER_CERT      | Path to server cert in pem format                                       |                       |
 | MF_SMTP_NOTIFIER_SERVER_KEY       | Path to server key in pem format                                        |                       |
+| MF_SMTP_NOTIFIER_FROM_ADDRESS     | Address for emails from field                                           |                       |
 | MF_JAEGER_URL                     | Jaeger server URL                                                       | localhost:6831        |
 | MF_NATS_URL                       | NATS broker URL                                                         | nats://127.0.0.1:4222 |
 | MF_EMAIL_HOST                     | Mail server host                                                        | localhost             |

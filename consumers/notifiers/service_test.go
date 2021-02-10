@@ -29,7 +29,7 @@ func newService() notifiers.Service {
 	auth := mocks.NewAuth(map[string]string{exampleUser1: exampleUser1, exampleUser2: exampleUser2, invalidUser: invalidUser})
 	notifier := mocks.NewNotifier()
 	idp := uuid.NewMock()
-	return notifiers.New(auth, repo, idp, notifier)
+	return notifiers.New(auth, repo, idp, notifier, "")
 }
 
 func TestCreateSubscription(t *testing.T) {
