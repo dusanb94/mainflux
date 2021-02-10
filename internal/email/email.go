@@ -74,21 +74,21 @@ func New(c *Config) (*Agent, error) {
 }
 
 // Send sends e-mail
-func (a *Agent) Send(To []string, From, Subject, Header, Content, Footer string) error {
+func (a *Agent) Send(to []string, from, subject, header, content, footer string) error {
 	if a.tmpl == nil {
 		return errMissingEmailTemplate
 	}
 
 	email := new(bytes.Buffer)
 	tmpl := emailTemplate{
-		To:      To,
-		From:    From,
-		Subject: Subject,
-		Header:  Header,
-		Content: Content,
-		Footer:  Footer,
+		To:      to,
+		From:    from,
+		Subject: subject,
+		Header:  header,
+		Content: content,
+		Footer:  footer,
 	}
-	if From == "" {
+	if from == "" {
 		tmpl.From = a.conf.FromName
 	}
 
@@ -96,7 +96,7 @@ func (a *Agent) Send(To []string, From, Subject, Header, Content, Footer string)
 		return errors.Wrap(errExecTemplate, err)
 	}
 
-	if err := smtp.SendMail(a.addr, a.auth, a.conf.FromAddress, To, email.Bytes()); err != nil {
+	if err := smtp.SendMail(a.addr, a.auth, a.conf.FromAddress, to, email.Bytes()); err != nil {
 		return errors.Wrap(errSendMail, err)
 	}
 

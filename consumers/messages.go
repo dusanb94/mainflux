@@ -47,7 +47,8 @@ func handler(t transformers.Transformer, c Consumer) messaging.MessageHandler {
 				return err
 			}
 		}
-		return c.Consume(m)
+		go c.Consume(m)
+		return nil
 	}
 }
 
