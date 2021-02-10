@@ -48,9 +48,10 @@ const (
 	defDBSSLCert     = ""
 	defDBSSLKey      = ""
 	defDBSSLRootCert = ""
-	defHTTPPort      = "8180"
+	defHTTPPort      = "8907"
 	defServerCert    = ""
 	defServerKey     = ""
+	defFrom          = ""
 	defJaegerURL     = ""
 	defNatsURL       = "nats://localhost:4222"
 
@@ -68,20 +69,21 @@ const (
 	defAuthURL     = "localhost:8181"
 	defAuthTimeout = "1s"
 
-	envLogLevel      = "MF_SMTP_NOTIFIER_LOG_LEVEL"
-	envDBHost        = "MF_SMTP_NOTIFIER_DB_HOST"
-	envDBPort        = "MF_SMTP_NOTIFIER_DB_PORT"
-	envDBUser        = "MF_SMTP_NOTIFIER_DB_USER"
-	envDBPass        = "MF_SMTP_NOTIFIER_DB_PASS"
-	envDB            = "MF_SMTP_NOTIFIER_DB"
-	envConfigPath    = "MF_SMTP_NOTIFIER_WRITER_CONFIG_PATH"
-	envDBSSLMode     = "MF_SMTP_NOTIFIER_DB_SSL_MODE"
-	envDBSSLCert     = "MF_SMTP_NOTIFIER_DB_SSL_CERT"
-	envDBSSLKey      = "MF_SMTP_NOTIFIER_DB_SSL_KEY"
-	envDBSSLRootCert = "MF_SMTP_NOTIFIER_DB_SSL_ROOT_CERT"
-	envHTTPPort      = "MF_SMTP_NOTIFIER_HTTP_PORT"
-	envServerCert    = "MF_SMTP_NOTIFIER_SERVER_CERT"
-	envServerKey     = "MF_SMTP_NOTIFIER_SERVER_KEY"
+	envLogLevel      = "MF_SMPP_NOTIFIER_LOG_LEVEL"
+	envDBHost        = "MF_SMPP_NOTIFIER_DB_HOST"
+	envDBPort        = "MF_SMPP_NOTIFIER_DB_PORT"
+	envDBUser        = "MF_SMPP_NOTIFIER_DB_USER"
+	envDBPass        = "MF_SMPP_NOTIFIER_DB_PASS"
+	envDB            = "MF_SMPP_NOTIFIER_DB"
+	envConfigPath    = "MF_SMPP_NOTIFIER_WRITER_CONFIG_PATH"
+	envDBSSLMode     = "MF_SMPP_NOTIFIER_DB_SSL_MODE"
+	envDBSSLCert     = "MF_SMPP_NOTIFIER_DB_SSL_CERT"
+	envDBSSLKey      = "MF_SMPP_NOTIFIER_DB_SSL_KEY"
+	envDBSSLRootCert = "MF_SMPP_NOTIFIER_DB_SSL_ROOT_CERT"
+	envHTTPPort      = "MF_SMPP_NOTIFIER_HTTP_PORT"
+	envServerCert    = "MF_SMPP_NOTIFIER_SERVER_CERT"
+	envServerKey     = "MF_SMPP_NOTIFIER_SERVER_KEY"
+	envFrom          = "MF_SMPP_NOTIFIER_SOURCE_ADDR"
 	envJaegerURL     = "MF_JAEGER_URL"
 	envNatsURL       = "MF_NATS_URL"
 
@@ -106,6 +108,7 @@ type config struct {
 	logLevel    string
 	dbConfig    postgres.Config
 	smppConf    mfsmpp.Config
+	from        string
 	httpPort    string
 	serverCert  string
 	serverKey   string
@@ -224,6 +227,7 @@ func loadConfig() config {
 		configPath:  mainflux.Env(envConfigPath, defConfigPath),
 		dbConfig:    dbConfig,
 		smppConf:    smppConf,
+		from:        mainflux.Env(envFrom, defFrom),
 		httpPort:    mainflux.Env(envHTTPPort, defHTTPPort),
 		serverCert:  mainflux.Env(envServerCert, defServerCert),
 		serverKey:   mainflux.Env(envServerKey, defServerKey),
@@ -299,7 +303,7 @@ func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthNServi
 	repo := tracing.New(postgres.New(database), tracer)
 	idp := ulid.New()
 	notifier := mfsmpp.New(c.smppConf)
-	svc := notifiers.New(auth, repo, idp, notifier)
+	svc := notifiers.New(auth, repo, idp, notifier, c.from)
 	svc = api.LoggingMiddleware(svc, logger)
 	svc = api.MetricsMiddleware(
 		svc,
@@ -322,10 +326,10 @@ func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthNServi
 func startHTTPServer(tracer opentracing.Tracer, svc notifiers.Service, port string, certFile string, keyFile string, logger logger.Logger, errs chan error) {
 	p := fmt.Sprintf(":%s", port)
 	if certFile != "" || keyFile != "" {
-		logger.Info(fmt.Sprintf("SMTP notifier service started using https, cert %s key %s, exposed port %s", certFile, keyFile, port))
+		logger.Info(fmt.Sprintf("SMPP notifier service started using https, cert %s key %s, exposed port %s", certFile, keyFile, port))
 		errs <- http.ListenAndServeTLS(p, certFile, keyFile, api.MakeHandler(svc, tracer))
 	} else {
-		logger.Info(fmt.Sprintf("SMTP notifier service started using http, exposed port %s", port))
+		logger.Info(fmt.Sprintf("SMPP notifier service started using http, exposed port %s", port))
 		errs <- http.ListenAndServe(p, api.MakeHandler(svc, tracer))
 	}
 }

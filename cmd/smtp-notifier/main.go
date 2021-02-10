@@ -51,6 +51,7 @@ const (
 	defHTTPPort      = "8906"
 	defServerCert    = ""
 	defServerKey     = ""
+	defFrom          = ""
 	defJaegerURL     = ""
 	defNatsURL       = "nats://localhost:4222"
 
@@ -82,6 +83,7 @@ const (
 	envHTTPPort      = "MF_SMTP_NOTIFIER_PORT"
 	envServerCert    = "MF_SMTP_NOTIFIER_SERVER_CERT"
 	envServerKey     = "MF_SMTP_NOTIFIER_SERVER_KEY"
+	envFrom          = "MF_SMTP_NOTIFIER_FROM_ADDR"
 	envJaegerURL     = "MF_JAEGER_URL"
 	envNatsURL       = "MF_NATS_URL"
 
@@ -106,6 +108,7 @@ type config struct {
 	logLevel    string
 	dbConfig    postgres.Config
 	emailConf   email.Config
+	from        string
 	httpPort    string
 	serverCert  string
 	serverKey   string
@@ -207,6 +210,7 @@ func loadConfig() config {
 		configPath:  mainflux.Env(envConfigPath, defConfigPath),
 		dbConfig:    dbConfig,
 		emailConf:   emailConf,
+		from:        mainflux.Env(envFrom, defFrom),
 		httpPort:    mainflux.Env(envHTTPPort, defHTTPPort),
 		serverCert:  mainflux.Env(envServerCert, defServerCert),
 		serverKey:   mainflux.Env(envServerKey, defServerKey),
@@ -289,7 +293,7 @@ func newService(db *sqlx.DB, tracer opentracing.Tracer, auth mainflux.AuthNServi
 	}
 
 	notifier := smtp.New(agent)
-	svc := notifiers.New(auth, repo, idp, notifier)
+	svc := notifiers.New(auth, repo, idp, notifier, c.from)
 	svc = api.LoggingMiddleware(svc, logger)
 	svc = api.MetricsMiddleware(
 		svc,
