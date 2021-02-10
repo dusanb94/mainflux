@@ -9,6 +9,7 @@ require (
 	github.com/dustin/go-coap v0.0.0-20190908170653-752e0f79981e
 	github.com/eclipse/paho.mqtt.golang v1.2.0
 	github.com/fatih/color v1.9.0
+	github.com/fiorix/go-smpp v0.0.0-20181129163705-6dbf72b9bcea
 	github.com/go-kit/kit v0.10.0
 	github.com/go-redis/redis v6.15.8+incompatible
 	github.com/go-zoo/bone v1.3.0
@@ -24,6 +25,7 @@ require (
 	github.com/mainflux/mproxy v0.2.1
 	github.com/mainflux/senml v1.5.0
 	github.com/nats-io/nats.go v1.10.0
+	github.com/oklog/ulid/v2 v2.0.2
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/pelletier/go-toml v1.8.0
