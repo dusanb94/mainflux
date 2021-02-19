@@ -4,6 +4,7 @@
 package smtp
 
 import (
+	"errors"
 	"fmt"
 
 	notifiers "github.com/mainflux/mainflux/consumers/notifiers"
@@ -20,6 +21,7 @@ const (
 
 var _ notifiers.Notifier = (*notifier)(nil)
 
+var errMessageType = errors.New("error message type")
 var fields = [...]string{"s_leakage", "s_blocked", "s_magnet", "s_blowout", "ALM", "magnet"}
 
 type notifier struct {
@@ -33,9 +35,13 @@ func New(agent *email.Agent) notifiers.Notifier {
 }
 
 func (n *notifier) Notify(from string, to []string, msg messaging.Message) error {
-	m, err := json.New().Transform(msg)
+	jm, err := json.New().Transform(msg)
 	if err != nil {
 		return err
+	}
+	jsonMsg, ok := jm.(json.Messages)
+	if !ok {
+		return errMessageType
 	}
 
 	subject := fmt.Sprintf(`Notification for Channel %s`, msg.Channel)
@@ -45,22 +51,11 @@ func (n *notifier) Notify(from string, to []string, msg messaging.Message) error
 
 	values := string(msg.Payload)
 	content := fmt.Sprintf(contentTemplate, msg.Publisher, msg.Protocol, values)
-	switch t := m.(type) {
-	case map[string]interface{}:
+	for _, m := range jsonMsg.Data {
 		for _, k := range fields {
-			if v, ok := t[k]; v != nil && ok {
+			if v, ok := m.Payload[k]; v != nil && ok {
 				if val, ok := v.(int); ok && val != 0 {
 					return n.agent.Send(to, from, subject, "", content, footer)
-				}
-			}
-		}
-	case []map[string]interface{}:
-		for _, v := range t {
-			for _, k := range fields {
-				if v, ok := v[k]; v != nil && ok {
-					if val, ok := v.(int); ok && val != 0 {
-						return n.agent.Send(to, from, subject, "", content, footer)
-					}
 				}
 			}
 		}

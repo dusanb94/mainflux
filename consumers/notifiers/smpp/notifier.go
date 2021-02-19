@@ -4,6 +4,7 @@
 package smpp
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/fiorix/go-smpp/smpp"
@@ -22,6 +23,7 @@ const (
 
 var _ notifiers.Notifier = (*notifier)(nil)
 var fields = [...]string{"s_leakage", "s_blocked", "s_magnet", "s_blowout", "ALM", "magnet"}
+var errMessageType = errors.New("error message type")
 
 type notifier struct {
 	t             *smpp.Transmitter
@@ -52,13 +54,18 @@ func New(cfg Config) notifiers.Notifier {
 }
 
 func (n *notifier) Notify(from string, to []string, msg messaging.Message) error {
-	m, err := json.New().Transform(msg)
+	jm, err := json.New().Transform(msg)
 	if err != nil {
 		return err
 	}
 	subject := fmt.Sprintf(`Notification for Channel %s`, msg.Channel)
 	if msg.Subtopic != "" {
 		subject = fmt.Sprintf("%s and subtopic %s", subject, msg.Subtopic)
+	}
+
+	jsonMsg, ok := jm.(json.Messages)
+	if !ok {
+		return errMessageType
 	}
 
 	send := &smpp.ShortMessage{
@@ -72,24 +79,12 @@ func (n *notifier) Notify(from string, to []string, msg messaging.Message) error
 		Register:      pdufield.FailureDeliveryReceipt,
 	}
 
-	switch t := m.(type) {
-	case map[string]interface{}:
+	for _, m := range jsonMsg.Data {
 		for _, k := range fields {
-			if v, ok := t[k]; v != nil && ok {
+			if v, ok := m.Payload[k]; v != nil && ok {
 				if val, ok := v.(int); ok && val != 0 {
 					_, err := n.t.Submit(send)
 					return err
-				}
-			}
-		}
-	case []map[string]interface{}:
-		for _, v := range t {
-			for _, k := range fields {
-				if v, ok := v[k]; v != nil && ok {
-					if val, ok := v.(int); ok && val != 0 {
-						_, err := n.t.Submit(send)
-						return err
-					}
 				}
 			}
 		}
