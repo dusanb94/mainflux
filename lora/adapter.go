@@ -31,22 +31,22 @@ var (
 // implementation, and all of its decorators (e.g. logging & metrics).
 type Service interface {
 	// CreateThing creates thingID:devEUI route-map
-	CreateThing(thingID string, devEUI string) error
+	CreateThing(ctx context.Context, thingID string, devEUI string) error
 
 	// UpdateThing updates thingID:devEUI route-map
-	UpdateThing(thingID string, devEUI string) error
+	UpdateThing(ctx context.Context, thingID string, devEUI string) error
 
 	// RemoveThing removes thingID:devEUI route-map
-	RemoveThing(thingID string) error
+	RemoveThing(ctx context.Context, thingID string) error
 
 	// CreateChannel creates channelID:appID route-map
-	CreateChannel(chanID string, appID string) error
+	CreateChannel(ctx context.Context, chanID string, appID string) error
 
 	// UpdateChannel updates channelID:appID route-map
-	UpdateChannel(chanID string, appID string) error
+	UpdateChannel(ctx context.Context, chanID string, appID string) error
 
 	// RemoveChannel removes channelID:appID route-map
-	RemoveChannel(chanID string) error
+	RemoveChannel(ctx context.Context, chanID string) error
 
 	// Publish forwards messages from the LoRa MQTT broker to Mainflux NATS broker
 	Publish(ctx context.Context, token string, msg Message) error
@@ -72,13 +72,13 @@ func New(publisher messaging.Publisher, thingsRM, channelsRM RouteMapRepository)
 // Publish forwards messages from Lora MQTT broker to Mainflux NATS broker
 func (as *adapterService) Publish(ctx context.Context, token string, m Message) error {
 	// Get route map of lora application
-	thing, err := as.thingsRM.Get(m.DevEUI)
+	thing, err := as.thingsRM.Get(ctx, m.DevEUI)
 	if err != nil {
 		return ErrNotFoundDev
 	}
 
 	// Get route map of lora application
-	channel, err := as.channelsRM.Get(m.ApplicationID)
+	channel, err := as.channelsRM.Get(ctx, m.ApplicationID)
 	if err != nil {
 		return ErrNotFoundApp
 	}
@@ -112,26 +112,26 @@ func (as *adapterService) Publish(ctx context.Context, token string, m Message) 
 	return as.publisher.Publish(msg.Channel, msg)
 }
 
-func (as *adapterService) CreateThing(thingID string, devEUI string) error {
-	return as.thingsRM.Save(thingID, devEUI)
+func (as *adapterService) CreateThing(ctx context.Context, thingID string, devEUI string) error {
+	return as.thingsRM.Save(ctx, thingID, devEUI)
 }
 
-func (as *adapterService) UpdateThing(thingID string, devEUI string) error {
-	return as.thingsRM.Save(thingID, devEUI)
+func (as *adapterService) UpdateThing(ctx context.Context, thingID string, devEUI string) error {
+	return as.thingsRM.Save(ctx, thingID, devEUI)
 }
 
-func (as *adapterService) RemoveThing(thingID string) error {
-	return as.thingsRM.Remove(thingID)
+func (as *adapterService) RemoveThing(ctx context.Context, thingID string) error {
+	return as.thingsRM.Remove(ctx, thingID)
 }
 
-func (as *adapterService) CreateChannel(chanID string, appID string) error {
-	return as.channelsRM.Save(chanID, appID)
+func (as *adapterService) CreateChannel(ctx context.Context, chanID string, appID string) error {
+	return as.channelsRM.Save(ctx, chanID, appID)
 }
 
-func (as *adapterService) UpdateChannel(chanID string, appID string) error {
-	return as.channelsRM.Save(chanID, appID)
+func (as *adapterService) UpdateChannel(ctx context.Context, chanID string, appID string) error {
+	return as.channelsRM.Save(ctx, chanID, appID)
 }
 
-func (as *adapterService) RemoveChannel(chanID string) error {
-	return as.channelsRM.Remove(chanID)
+func (as *adapterService) RemoveChannel(ctx context.Context, chanID string) error {
+	return as.channelsRM.Remove(ctx, chanID)
 }

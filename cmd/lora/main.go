@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	r "github.com/go-redis/redis"
+	r "github.com/go-redis/redis/v8"
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/logger"
 	"github.com/mainflux/mainflux/lora"
@@ -200,7 +200,7 @@ func subscribeToLoRaBroker(svc lora.Service, msub messaging.Subscriber, logger l
 func subscribeToThingsES(svc lora.Service, client *r.Client, consumer string, logger logger.Logger) {
 	eventStore := redis.NewEventStore(svc, client, consumer, logger)
 	logger.Info("Subscribed to Redis Event Store")
-	if err := eventStore.Subscribe("mainflux.things"); err != nil {
+	if err := eventStore.Subscribe(context.Background(), "mainflux.things"); err != nil {
 		logger.Warn(fmt.Sprintf("LoRa-adapter service failed to subscribe to Redis event source: %s", err))
 	}
 }

@@ -9,7 +9,8 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.3.2
 	github.com/fatih/color v1.10.0
 	github.com/go-kit/kit v0.10.0
-	github.com/go-redis/redis v6.15.9+incompatible
+	github.com/go-redis/redis v6.15.9+incompatible // indirect
+	github.com/go-redis/redis/v8 v8.6.0
 	github.com/go-zoo/bone v1.3.0
 	github.com/gocql/gocql v0.0.0-20210303210847-f18e0979d243
 	github.com/gofrs/uuid v4.0.0+incompatible
