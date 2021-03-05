@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	influxdata "github.com/influxdata/influxdb/client/v2"
+	influxdata "github.com/influxdata/influxdb-client-go/v2"
 	iwriter "github.com/mainflux/mainflux/consumers/writers/influxdb"
 	"github.com/mainflux/mainflux/pkg/transformers/senml"
 	"github.com/mainflux/mainflux/pkg/uuid"

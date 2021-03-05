@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	influxdata "github.com/influxdata/influxdb/client/v2"
-	influxdb "github.com/influxdata/influxdb/client/v2"
+	influxdata "github.com/influxdata/influxdb-client-go/v2"
+	influxdb "github.com/influxdata/influxdb-client-go/v2"
 	log "github.com/mainflux/mainflux/logger"
 	dockertest "github.com/ory/dockertest/v3"
 )

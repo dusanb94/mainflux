@@ -7,9 +7,8 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
-	influxdb "github.com/influxdata/influxdb/client/v2"
+	influxdb "github.com/influxdata/influxdb-client-go/v2"
 	dockertest "github.com/ory/dockertest/v3"
 )
 
@@ -20,25 +19,39 @@ func TestMain(m *testing.M) {
 	}
 
 	cfg := []string{
-		"INFLUXDB_USER=test",
-		"INFLUXDB_USER_PASSWORD=test",
-		"INFLUXDB_DB=test",
+		"DOCKER_INFLUXDB_INIT_USERNAME=test",
+		"DOCKER_INFLUXDB_INIT_PASSWORD=test",
+		"DOCKER_INFLUXDB_INIT_MODE=setup",
+		fmt.Sprintf("DOCKER_INFLUXDB_INIT_ORG=%s", org),
+		fmt.Sprintf("DOCKER_INFLUXDB_INIT_BUCKET=%s", bucket),
+		fmt.Sprintf("DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=%s", authToken),
 	}
-	container, err := pool.Run("influxdb", "1.8.4", cfg)
+	container, err := pool.Run("influxdb", "2.0", cfg)
 	if err != nil {
 		testLog.Error(fmt.Sprintf("Could not start container: %s", err))
 	}
 
 	port = container.GetPort("8086/tcp")
-	clientCfg.Addr = fmt.Sprintf("http://localhost:%s", port)
+	addr := fmt.Sprintf("http://localhost:%s", port)
+
+	client := influxdb.NewClient(addr, authToken)
 
 	if err := pool.Retry(func() error {
-		client, err = influxdb.NewHTTPClient(clientCfg)
-		_, _, err = client.Ping(5 * time.Millisecond)
-		return err
+		writeAPI = client.WriteAPI(org, bucket)
+		deleteAPI = client.DeleteAPI()
+		queryAPI = client.QueryAPI(org)
+		// _, err = client.Health(context.Background())
+		return nil
 	}); err != nil {
 		testLog.Error(fmt.Sprintf("Could not connect to docker: %s", err))
 	}
+
+	go func() {
+		for {
+			err := <-writeAPI.Errors()
+			testLog.Warn(fmt.Sprintf("Error writing: %s", err))
+		}
+	}()
 
 	code := m.Run()
 

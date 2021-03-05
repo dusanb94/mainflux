@@ -9,7 +9,6 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.3.2
 	github.com/fatih/color v1.10.0
 	github.com/go-kit/kit v0.10.0
-	github.com/go-redis/redis v6.15.9+incompatible // indirect
 	github.com/go-redis/redis/v8 v8.6.0
 	github.com/go-zoo/bone v1.3.0
 	github.com/gocql/gocql v0.0.0-20210303210847-f18e0979d243
@@ -19,7 +18,7 @@ require (
 	github.com/gopcua/opcua v0.1.6
 	github.com/hashicorp/vault/api v1.0.4
 	github.com/hokaccha/go-prettyjson v0.0.0-20210113012101-fb4e108d2519
-	github.com/influxdata/influxdb v1.8.4
+	github.com/influxdata/influxdb-client-go/v2 v2.2.2
 	github.com/jmoiron/sqlx v1.3.1
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.9.0
@@ -28,8 +27,6 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1
 	github.com/nats-io/nats.go v1.10.0
 	github.com/oklog/ulid/v2 v2.0.2
-	github.com/onsi/ginkgo v1.15.0 // indirect
-	github.com/onsi/gomega v1.10.5 // indirect
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/ory/dockertest/v3 v3.6.3
 	github.com/pelletier/go-toml v1.8.1
