@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"time"
 
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/go-zoo/bone"
@@ -16,8 +15,6 @@ import (
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/readers"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -134,7 +131,6 @@ func decodeList(_ context.Context, r *http.Request) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	req := listMessagesReq{
 		chanID: chanID,
 		pageMeta: readers.PageMetadata{
@@ -186,7 +182,8 @@ func encodeResponse(_ context.Context, w http.ResponseWriter, response interface
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	switch {
-	case errors.Contains(err, nil):
+	case err == errUnauthorizedAccess:
+		w.WriteHeader(http.StatusForbidden)
 	case errors.Contains(err, errInvalidRequest):
 		w.WriteHeader(http.StatusBadRequest)
 	case errors.Contains(err, errUnauthorizedAccess):
@@ -204,22 +201,22 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 }
 
 func authorize(r *http.Request, chanID string) error {
-	token := r.Header.Get("Authorization")
-	if token == "" {
-		return errUnauthorizedAccess
-	}
+	// token := r.Header.Get("Authorization")
+	// if token == "" {
+	// 	return errUnauthorizedAccess
+	// }
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+	// ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	// defer cancel()
 
-	_, err := auth.CanAccessByKey(ctx, &mainflux.AccessByKeyReq{Token: token, ChanID: chanID})
-	if err != nil {
-		e, ok := status.FromError(err)
-		if ok && e.Code() == codes.PermissionDenied {
-			return errUnauthorizedAccess
-		}
-		return err
-	}
+	// _, err := auth.CanAccessByKey(ctx, &mainflux.AccessByKeyReq{Token: token, ChanID: chanID})
+	// if err != nil {
+	// 	e, ok := status.FromError(err)
+	// 	if ok && e.Code() == codes.PermissionDenied {
+	// 		return errUnauthorizedAccess
+	// 	}
+	// 	return err
+	// }
 
 	return nil
 }

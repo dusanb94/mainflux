@@ -14,8 +14,10 @@ import (
 
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
 	influxdata "github.com/influxdata/influxdb-client-go/v2"
+	influxapi "github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/logger"
+	mflog "github.com/mainflux/mainflux/logger"
 	"github.com/mainflux/mainflux/readers"
 	"github.com/mainflux/mainflux/readers/api"
 	"github.com/mainflux/mainflux/readers/influxdb"
@@ -35,6 +37,9 @@ const (
 	defDBPort            = "8086"
 	defDBUser            = "mainflux"
 	defDBPass            = "mainflux"
+	defDBToken           = "mainflux-secret-influxdb-token"
+	defDBOrg             = "mainflux"
+	defDBBucket          = "messages"
 	defClientTLS         = "false"
 	defCACerts           = ""
 	defServerCert        = ""
@@ -50,6 +55,9 @@ const (
 	envDBPort            = "MF_INFLUXDB_PORT"
 	envDBUser            = "MF_INFLUXDB_ADMIN_USER"
 	envDBPass            = "MF_INFLUXDB_ADMIN_PASSWORD"
+	envDBToken           = "MF_INFLUXDB_ADMIN_TOKEN"
+	envDBOrg             = "MF_INFLUXDB_ORG"
+	envDBBucket          = "MF_INFLUXDB_BUCKET"
 	envClientTLS         = "MF_INFLUX_READER_CLIENT_TLS"
 	envCACerts           = "MF_INFLUX_READER_CA_CERTS"
 	envServerCert        = "MF_INFLUX_READER_SERVER_CERT"
@@ -67,6 +75,9 @@ type config struct {
 	dbPort            string
 	dbUser            string
 	dbPass            string
+	dbOrg             string
+	dbBucket          string
+	dbToken           string
 	clientTLS         bool
 	caCerts           string
 	serverCert        string
@@ -77,8 +88,8 @@ type config struct {
 }
 
 func main() {
-	cfg, clientCfg := loadConfigs()
-	logger, err := logger.New(os.Stdout, cfg.logLevel)
+	cfg := loadConfig()
+	logger, err := mflog.New(os.Stdout, cfg.logLevel)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
@@ -90,14 +101,20 @@ func main() {
 
 	tc := thingsapi.NewClient(conn, thingsTracer, cfg.thingsAuthTimeout)
 
-	client, err := influxdata.NewHTTPClient(clientCfg)
-	if err != nil {
-		logger.Error(fmt.Sprintf("Failed to create InfluxDB client: %s", err))
-		os.Exit(1)
-	}
+	// var lvl mflog.Level
+	// if err := lvl.UnmarshalText(cfg.logLevel); err != nil {
+	// 	logger.Error(fmt.Sprintf("Invalid log level: %s", err))
+	// }
+
+	opts := influxdata.DefaultOptions()
+	// opts.SetLogLevel(uint(lvl - 1))
+
+	addr := fmt.Sprintf("http://%s:%s", cfg.dbHost, cfg.dbPort)
+	client := influxdata.NewClientWithOptions(addr, cfg.dbToken, opts)
 	defer client.Close()
 
-	repo := newService(client, cfg.dbName, logger)
+	queryAPI := client.QueryAPI(cfg.dbOrg)
+	repo := newService(queryAPI, cfg.dbName, logger)
 
 	errs := make(chan error, 2)
 	go func() {
@@ -112,7 +129,7 @@ func main() {
 	logger.Error(fmt.Sprintf("InfluxDB writer service terminated: %s", err))
 }
 
-func loadConfigs() (config, influxdata.HTTPConfig) {
+func loadConfig() config {
 	tls, err := strconv.ParseBool(mainflux.Env(envClientTLS, defClientTLS))
 	if err != nil {
 		log.Fatalf("Invalid value passed for %s\n", envClientTLS)
@@ -131,6 +148,9 @@ func loadConfigs() (config, influxdata.HTTPConfig) {
 		dbPort:            mainflux.Env(envDBPort, defDBPort),
 		dbUser:            mainflux.Env(envDBUser, defDBUser),
 		dbPass:            mainflux.Env(envDBPass, defDBPass),
+		dbToken:           mainflux.Env(envDBToken, defDBToken),
+		dbOrg:             mainflux.Env(envDBOrg, defDBOrg),
+		dbBucket:          mainflux.Env(envDBBucket, defDBBucket),
 		clientTLS:         tls,
 		caCerts:           mainflux.Env(envCACerts, defCACerts),
 		serverCert:        mainflux.Env(envServerCert, defServerCert),
@@ -139,14 +159,7 @@ func loadConfigs() (config, influxdata.HTTPConfig) {
 		thingsAuthURL:     mainflux.Env(envThingsAuthURL, defThingsAuthURL),
 		thingsAuthTimeout: authTimeout,
 	}
-
-	clientCfg := influxdata.HTTPConfig{
-		Addr:     fmt.Sprintf("http://%s:%s", cfg.dbHost, cfg.dbPort),
-		Username: cfg.dbUser,
-		Password: cfg.dbPass,
-	}
-
-	return cfg, clientCfg
+	return cfg
 }
 
 func connectToThings(cfg config, logger logger.Logger) *grpc.ClientConn {
@@ -197,8 +210,8 @@ func initJaeger(svcName, url string, logger logger.Logger) (opentracing.Tracer, 
 	return tracer, closer
 }
 
-func newService(client influxdata.Client, dbName string, logger logger.Logger) readers.MessageRepository {
-	repo := influxdb.New(client, dbName)
+func newService(queryAPI influxapi.QueryAPI, dbName string, logger logger.Logger) readers.MessageRepository {
+	repo := influxdb.New(queryAPI)
 	repo = api.LoggingMiddleware(repo, logger)
 	repo = api.MetricsMiddleware(
 		repo,

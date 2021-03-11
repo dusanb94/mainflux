@@ -34,15 +34,15 @@ func New(publisher messaging.Publisher, things mainflux.ThingsServiceClient) Ser
 }
 
 func (as *adapterService) Publish(ctx context.Context, token string, msg messaging.Message) error {
-	ar := &mainflux.AccessByKeyReq{
-		Token:  token,
-		ChanID: msg.Channel,
-	}
-	thid, err := as.things.CanAccessByKey(ctx, ar)
-	if err != nil {
-		return err
-	}
-	msg.Publisher = thid.GetValue()
+	// ar := &mainflux.AccessByKeyReq{
+	// 	Token:  token,
+	// 	ChanID: msg.Channel,
+	// }
+	// thid, err := as.things.CanAccessByKey(ctx, ar)
+	// if err != nil {
+	// 	return err
+	// }
+	// msg.Publisher = thid.GetValue()
 
 	return as.publisher.Publish(msg.Channel, msg)
 }

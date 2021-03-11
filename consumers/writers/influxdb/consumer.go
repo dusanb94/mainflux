@@ -17,7 +17,10 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
 )
 
-const senmlPoints = "messages"
+const (
+	senmlPoints   = "messages"
+	protocolField = "protocol"
+)
 
 var errSaveMessage = errors.New("failed to save message to influxdb database")
 
@@ -83,7 +86,7 @@ func (repo *influxRepo) jsonPoints(pts []*write.Point, msgs json.Messages) []*wr
 			fields[k] = v
 		}
 		// At least one known field need to exist so that COUNT can be performed.
-		fields["protocol"] = m.Protocol
+		fields[protocolField] = m.Protocol
 		pt := influxdata.NewPoint(msgs.Format, jsonTags(m), fields, t)
 		pts = append(pts, pt)
 	}

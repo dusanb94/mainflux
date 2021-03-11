@@ -1,6 +1,7 @@
 package influxdb
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -11,7 +12,7 @@ import (
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/readers"
 
-	influxdata "github.com/influxdata/influxdb-client-go/v2"
+	"github.com/influxdata/influxdb-client-go/v2/api"
 	jsont "github.com/mainflux/mainflux/pkg/transformers/json"
 	"github.com/mainflux/mainflux/pkg/transformers/senml"
 )
@@ -27,106 +28,100 @@ var errReadMessages = errors.New("failed to read messages from influxdb database
 var _ readers.MessageRepository = (*influxRepository)(nil)
 
 type influxRepository struct {
-	database string
-	client   influxdata.Client
+	queryAPI api.QueryAPI
 }
 
 // New returns new InfluxDB reader.
-func New(client influxdata.Client, database string) readers.MessageRepository {
-	return &influxRepository{
-		database,
-		client,
-	}
+func New(queryAPI api.QueryAPI) readers.MessageRepository {
+	return &influxRepository{queryAPI}
 }
 
 func (repo *influxRepository) ReadAll(chanID string, rpm readers.PageMetadata) (readers.MessagesPage, error) {
-	format := defMeasurement
-	if rpm.Format != "" {
-		format = rpm.Format
-	}
+	// format := defMeasurement
+	// if rpm.Format != "" {
+	// 	format = rpm.Format
+	// }
 
-	condition := fmtCondition(chanID, rpm)
-
-	cmd := fmt.Sprintf(`SELECT * FROM %s WHERE %s ORDER BY time DESC LIMIT %d OFFSET %d`, format, condition, rpm.Limit, rpm.Offset)
-	q := influxdata.Query{
-		Command:  cmd,
-		Database: repo.database,
-	}
-
+	// condition := fmtCondition(chanID, rpm)
+	// cmd := fmt.Sprintf(`SELECT * FROM %s WHERE %s ORDER BY time DESC LIMIT %d OFFSET %d`, format, condition, rpm.Limit, rpm.Offset)
+	cmd := `data = from(bucket: "messages") 
+|> range(start: -1000000000h) 
+|> yield()`
+	fmt.Println(cmd)
 	var ret []readers.Message
 
-	resp, err := repo.client.Query(q)
+	resp, err := repo.queryAPI.Query(context.Background(), cmd)
 	if err != nil {
 		return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
 	}
-	if resp.Error() != nil {
-		return readers.MessagesPage{}, errors.Wrap(errReadMessages, resp.Error())
+	defer resp.Close()
+	for resp.Next() {
+		fmt.Println("RESP:", resp.Record())
 	}
+	// if resp.Error() != nil {
+	// 	return readers.MessagesPage{}, errors.Wrap(errReadMessages, resp.Error())
+	// }
 
-	if len(resp.Results) < 1 || len(resp.Results[0].Series) < 1 {
-		return readers.MessagesPage{}, nil
-	}
+	// if len(resp.Results) < 1 || len(resp.Results[0].Series) < 1 {
+	// 	return readers.MessagesPage{}, nil
+	// }
 
-	result := resp.Results[0].Series[0]
-	for _, v := range result.Values {
-		ret = append(ret, parseMessage(format, result.Columns, v))
-	}
+	// result := resp.Results[0].Series[0]
+	// for _, v := range result.Values {
+	// 	ret = append(ret, parseMessage(format, result.Columns, v))
+	// }
 
-	total, err := repo.count(format, condition)
+	// total, err := repo.count(format, condition)
 	if err != nil {
 		return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
 	}
 
 	page := readers.MessagesPage{
 		PageMetadata: rpm,
-		Total:        total,
-		Messages:     ret,
+		// Total:        total,
+		Messages: ret,
 	}
 
 	return page, nil
 }
 
-func (repo *influxRepository) count(measurement, condition string) (uint64, error) {
-	cmd := fmt.Sprintf(`SELECT COUNT(*) FROM %s WHERE %s`, measurement, condition)
-	q := influxdata.Query{
-		Command:  cmd,
-		Database: repo.database,
-	}
+// func (repo *influxRepository) count(measurement, condition string) (uint64, error) {
+// 	cmd := fmt.Sprintf(`SELECT COUNT(*) FROM %s WHERE %s`, measurement, condition)
 
-	resp, err := repo.client.Query(q)
-	if err != nil {
-		return 0, err
-	}
-	if resp.Error() != nil {
-		return 0, resp.Error()
-	}
+// 	resp, err := repo.queryAPI.Query(context.Background(), cmd)
+// 	if err != nil {
+// 		return 0, err
+// 	}
+// 	if resp.Error() != nil {
+// 		return 0, resp.Error()
+// 	}
 
-	if len(resp.Results) < 1 ||
-		len(resp.Results[0].Series) < 1 ||
-		len(resp.Results[0].Series[0].Values) < 1 {
-		return 0, nil
-	}
+// 	if len(resp.Results) < 1 ||
+// 		len(resp.Results[0].Series) < 1 ||
+// 		len(resp.Results[0].Series[0].Values) < 1 {
+// 		return 0, nil
+// 	}
 
-	countIndex := 0
-	for i, col := range resp.Results[0].Series[0].Columns {
-		if col == countCol {
-			countIndex = i
-			break
-		}
-	}
+// 	countIndex := 0
+// 	for i, col := range resp.Results[0].Series[0].Columns {
+// 		if col == countCol {
+// 			countIndex = i
+// 			break
+// 		}
+// 	}
 
-	result := resp.Results[0].Series[0].Values[0]
-	if len(result) < countIndex+1 {
-		return 0, nil
-	}
+// 	result := resp.Results[0].Series[0].Values[0]
+// 	if len(result) < countIndex+1 {
+// 		return 0, nil
+// 	}
 
-	count, ok := result[countIndex].(json.Number)
-	if !ok {
-		return 0, nil
-	}
+// 	count, ok := result[countIndex].(json.Number)
+// 	if !ok {
+// 		return 0, nil
+// 	}
 
-	return strconv.ParseUint(count.String(), 10, 64)
-}
+// 	return strconv.ParseUint(count.String(), 10, 64)
+// }
 
 func fmtCondition(chanID string, rpm readers.PageMetadata) string {
 	condition := fmt.Sprintf(`channel='%s'`, chanID)

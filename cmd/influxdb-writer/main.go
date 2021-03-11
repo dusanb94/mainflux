@@ -30,48 +30,40 @@ import (
 const (
 	svcName = "influxdb-writer"
 
-	defNatsURL  = "nats://localhost:4222"
-	defLogLevel = "error"
-	defPort     = "8180"
-	// defDB       = "mainflux"
-	defDBHost   = "localhost"
-	defDBPort   = "8086"
-	defDBToken  = "mainflux-secret-token"
-	defDBOrg    = "mainflux"
-	defDBBucket = "messages"
-	// defDBUser      = "mainflux"
-	// defDBPass      = "mainflux"
+	defNatsURL     = "nats://localhost:4222"
+	defLogLevel    = "error"
+	defPort        = "8180"
+	defDBHost      = "localhost"
+	defDBPort      = "8086"
+	defDBToken     = "mainflux-secret-influxdb-token"
+	defDBOrg       = "mainflux"
+	defDBBucket    = "messages"
 	defConfigPath  = "/config.toml"
 	defContentType = "application/senml+json"
 	defTransformer = "senml"
 
-	envNatsURL  = "MF_NATS_URL"
-	envLogLevel = "MF_INFLUX_WRITER_LOG_LEVEL"
-	envPort     = "MF_INFLUX_WRITER_PORT"
-	// envDB       = "MF_INFLUXDB_DB"
-	envDBHost   = "MF_INFLUX_WRITER_DB_HOST"
-	envDBPort   = "MF_INFLUXDB_PORT"
-	envDBToken  = "MF_INFLUXDB_ADMIN_TOKEN"
-	envDBOrg    = "MF_INFLUXDB_ORG"
-	envDBBucket = "MF_INFLUXDB_BUCKET"
-	// envDBUser      = "MF_INFLUXDB_ADMIN_USER"
-	// envDBPass      = "MF_INFLUXDB_ADMIN_PASSWORD"
+	envNatsURL     = "MF_NATS_URL"
+	envLogLevel    = "MF_INFLUX_WRITER_LOG_LEVEL"
+	envPort        = "MF_INFLUX_WRITER_PORT"
+	envDBHost      = "MF_INFLUX_WRITER_DB_HOST"
+	envDBPort      = "MF_INFLUXDB_PORT"
+	envDBToken     = "MF_INFLUXDB_ADMIN_TOKEN"
+	envDBOrg       = "MF_INFLUXDB_ORG"
+	envDBBucket    = "MF_INFLUXDB_BUCKET"
 	envConfigPath  = "MF_INFLUX_WRITER_CONFIG_PATH"
 	envContentType = "MF_INFLUX_WRITER_CONTENT_TYPE"
 	envTransformer = "MF_INFLUX_WRITER_TRANSFORMER"
 )
 
 type config struct {
-	natsURL  string
-	logLevel string
-	port     string
-	dbName   string
-	dbHost   string
-	dbPort   string
-	dbOrg    string
-	dbBucket string
-	// dbUser      string
-	// dbPass      string
+	natsURL     string
+	logLevel    string
+	port        string
+	dbName      string
+	dbHost      string
+	dbPort      string
+	dbOrg       string
+	dbBucket    string
 	dbToken     string
 	configPath  string
 	contentType string
@@ -99,25 +91,17 @@ func main() {
 	}
 
 	opts := influxdata.DefaultOptions()
-	opts.SetLogLevel(uint(lvl))
+	opts.SetLogLevel(uint(lvl - 1))
 
-	// clientCfg := influxdata.HTTPConfig{
 	addr := fmt.Sprintf("http://%s:%s", cfg.dbHost, cfg.dbPort)
-	// 	Username: cfg.dbUser,
-	// 	Password: cfg.dbPass,
-	// }
-
 	client := influxdata.NewClientWithOptions(addr, cfg.dbToken, opts)
-	// if err != nil {
-	// 	logger.Error(fmt.Sprintf("Failed to create InfluxDB client: %s", err))
-	// 	os.Exit(1)
-	// }
 	defer client.Close()
+
 	writeAPI := client.WriteAPI(cfg.dbOrg, cfg.dbBucket)
 	go func() {
 		for {
 			err := <-writeAPI.Errors()
-			logger.Warn(fmt.Sprintf("Error writing data to InfluxDB: %s", err))
+			logger.Warn(fmt.Sprintf("Error async writing data to InfluxDB: %s", err))
 		}
 	}()
 
@@ -148,17 +132,14 @@ func main() {
 
 func loadConfig() config {
 	cfg := config{
-		natsURL:  mainflux.Env(envNatsURL, defNatsURL),
-		logLevel: mainflux.Env(envLogLevel, defLogLevel),
-		port:     mainflux.Env(envPort, defPort),
-		// dbName:   mainflux.Env(envDB, defDB),
-		dbHost:   mainflux.Env(envDBHost, defDBHost),
-		dbPort:   mainflux.Env(envDBPort, defDBPort),
-		dbToken:  mainflux.Env(envDBToken, defDBToken),
-		dbOrg:    mainflux.Env(envDBOrg, defDBOrg),
-		dbBucket: mainflux.Env(envDBBucket, defDBBucket),
-		// dbUser:      mainflux.Env(envDBUser, defDBUser),
-		// dbPass:      mainflux.Env(envDBPass, defDBPass),
+		natsURL:     mainflux.Env(envNatsURL, defNatsURL),
+		logLevel:    mainflux.Env(envLogLevel, defLogLevel),
+		port:        mainflux.Env(envPort, defPort),
+		dbHost:      mainflux.Env(envDBHost, defDBHost),
+		dbPort:      mainflux.Env(envDBPort, defDBPort),
+		dbToken:     mainflux.Env(envDBToken, defDBToken),
+		dbOrg:       mainflux.Env(envDBOrg, defDBOrg),
+		dbBucket:    mainflux.Env(envDBBucket, defDBBucket),
 		configPath:  mainflux.Env(envConfigPath, defConfigPath),
 		contentType: mainflux.Env(envContentType, defContentType),
 		transformer: mainflux.Env(envTransformer, defTransformer),
