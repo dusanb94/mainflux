@@ -64,7 +64,6 @@ func New(c *Config) (*Agent, error) {
 		}
 	}
 	a.addr = fmt.Sprintf("%s:%s", c.Host, c.Port)
-
 	tmpl, err := template.ParseFiles(c.Template)
 	if err != nil {
 		return a, errors.Wrap(errParseTemplate, err)

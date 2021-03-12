@@ -22,7 +22,7 @@ const (
 var _ notifiers.Notifier = (*notifier)(nil)
 
 var errMessageType = errors.New("error message type")
-var fields = [...]string{"s_leakage", "s_blocked", "s_magnet", "s_blowout", "ALM", "magnet"}
+var fields = [...]string{"d/s_leakage", "d/s_blocked", "d/s_magnet", "d/s_blowout", "ALM", "magnet"}
 
 type notifier struct {
 	agent *email.Agent
@@ -54,7 +54,7 @@ func (n *notifier) Notify(from string, to []string, msg messaging.Message) error
 	for _, m := range jsonMsg.Data {
 		for _, k := range fields {
 			if v, ok := m.Payload[k]; v != nil && ok {
-				if val, ok := v.(int); ok && val != 0 {
+				if val, ok := v.(float64); ok && val != 0 {
 					return n.agent.Send(to, from, subject, "", content, footer)
 				}
 			}

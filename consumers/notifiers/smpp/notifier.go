@@ -6,6 +6,7 @@ package smpp
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/fiorix/go-smpp/smpp"
 	"github.com/fiorix/go-smpp/smpp/pdu/pdufield"
@@ -22,7 +23,8 @@ const (
 )
 
 var _ notifiers.Notifier = (*notifier)(nil)
-var fields = [...]string{"s_leakage", "s_blocked", "s_magnet", "s_blowout", "ALM", "magnet"}
+
+var fields = [...]string{"d/s_leakage", "d/s_blocked", "d/s_magnet", "d/s_blowout", "ALM", "magnet"}
 var errMessageType = errors.New("error message type")
 
 type notifier struct {
@@ -42,6 +44,7 @@ func New(cfg Config) notifiers.Notifier {
 		Passwd:     cfg.Password,
 		SystemType: cfg.SystemType,
 	}
+	t.Bind()
 	ret := &notifier{
 		t:             t,
 		tr:            json.New(),
@@ -69,21 +72,25 @@ func (n *notifier) Notify(from string, to []string, msg messaging.Message) error
 	}
 
 	send := &smpp.ShortMessage{
-		Src:           from,
-		DstList:       to,
+		Src:     from,
+		DstList: to,
+		// Dst:           to[0],
+		Validity:      10 * time.Minute,
 		SourceAddrTON: n.sourceAddrTON,
 		DestAddrTON:   n.destAddrTON,
 		SourceAddrNPI: n.sourceAddrNPI,
 		DestAddrNPI:   n.destAddrNPI,
 		Text:          pdutext.Raw(msg.Payload),
-		Register:      pdufield.FailureDeliveryReceipt,
+		// Text:     pdutext.Raw("Lorem ipsum"),
+		Register: pdufield.NoDeliveryReceipt,
 	}
 
 	for _, m := range jsonMsg.Data {
 		for _, k := range fields {
 			if v, ok := m.Payload[k]; v != nil && ok {
-				if val, ok := v.(int); ok && val != 0 {
-					_, err := n.t.Submit(send)
+				if val, ok := v.(float64); ok && val != 0 {
+					_, err := n.t.SubmitLongMsg(send)
+					// fmt.Println(send)
 					return err
 				}
 			}
