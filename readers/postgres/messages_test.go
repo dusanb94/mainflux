@@ -515,6 +515,7 @@ func TestReadJSON(t *testing.T) {
 		result, err := reader.ReadAll(tc.chanID, tc.pageMeta)
 		for i := 0; i < len(result.Messages); i++ {
 			m := result.Messages[i]
+			// Remove id as it is not sent by the client.
 			delete(m.(map[string]interface{}), "id")
 			result.Messages[i] = m
 		}
