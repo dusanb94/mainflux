@@ -386,7 +386,6 @@ func TestReadJSON(t *testing.T) {
 		Subtopic:  "subtopic/format/some_json",
 		Protocol:  "coap",
 		Payload: map[string]interface{}{
-			"field_1": 123.0,
 			"field_2": "value",
 			"field_3": false,
 			"field_4": 12.344,
@@ -400,10 +399,8 @@ func TestReadJSON(t *testing.T) {
 		Format: format1,
 	}
 	msgs1 := []map[string]interface{}{}
-	now := time.Now().Unix()
 	for i := 0; i < msgsNum; i++ {
 		msg := m
-		msg.Created = now - int64(i)
 		messages1.Data = append(messages1.Data, msg)
 		m := toMap(msg)
 		msgs1 = append(msgs1, m)
@@ -420,10 +417,8 @@ func TestReadJSON(t *testing.T) {
 		Subtopic:  "subtopic/other_format/some_other_json",
 		Protocol:  "udp",
 		Payload: map[string]interface{}{
-			"field_1": 321.0,
 			"field_2": "other_value",
-			"field_3": true,
-			"field_4": 3.14159265,
+			"field_3": false,
 			"field_5": map[string]interface{}{
 				"field_1": "wrong_value",
 				"field_2": 24.5,
@@ -434,10 +429,8 @@ func TestReadJSON(t *testing.T) {
 		Format: format2,
 	}
 	msgs2 := []map[string]interface{}{}
-	now = time.Now().Unix()
 	for i := 0; i < msgsNum; i++ {
 		msg := m
-		msg.Created = now - int64(2*i)
 		if i%2 == 0 {
 			msg.Protocol = httpProt
 		}

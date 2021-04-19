@@ -380,7 +380,6 @@ func TestReadJSON(t *testing.T) {
 			"field_1": 123.0,
 			"field_2": "value",
 			"field_3": false,
-			"field_4": 12.344,
 		},
 	}
 	messages1 := json.Messages{
@@ -388,9 +387,8 @@ func TestReadJSON(t *testing.T) {
 	}
 	msgs1 := []map[string]interface{}{}
 	for i := 0; i < msgsNum; i++ {
-		msg := m
-		messages1.Data = append(messages1.Data, msg)
-		m := toMap(msg)
+		messages1.Data = append(messages1.Data, m)
+		m := toMap(m)
 		msgs1 = append(msgs1, m)
 	}
 	err = writer.Consume(messages1)
@@ -405,10 +403,7 @@ func TestReadJSON(t *testing.T) {
 		Subtopic:  "subtopic/other_format/some_other_json",
 		Protocol:  "udp",
 		Payload: map[string]interface{}{
-			"field_1": 321.0,
-			"field_2": "other_value",
-			"field_3": true,
-			"field_4": 3.14159265,
+			"field_pi": 3.14159265,
 		},
 	}
 	messages2 := json.Messages{
