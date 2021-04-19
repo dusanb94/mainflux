@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	writer "github.com/mainflux/mainflux/consumers/writers/mongodb"
+	mwriter "github.com/mainflux/mainflux/consumers/writers/mongodb"
 	"github.com/mainflux/mainflux/pkg/transformers/json"
 	"github.com/mainflux/mainflux/pkg/transformers/senml"
 	"github.com/mainflux/mainflux/pkg/uuid"
 	"github.com/mainflux/mainflux/readers"
-	reader "github.com/mainflux/mainflux/readers/mongodb"
+	mreader "github.com/mainflux/mainflux/readers/mongodb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -56,7 +56,7 @@ func TestReadSenml(t *testing.T) {
 	require.Nil(t, err, fmt.Sprintf("Creating new MongoDB client expected to succeed: %s.\n", err))
 
 	db := client.Database(testDB)
-	writer := writer.New(db)
+	writer := mwriter.New(db)
 
 	chanID, err := idProvider.ID()
 	require.Nil(t, err, fmt.Sprintf("got unexpected error: %s", err))
@@ -112,7 +112,7 @@ func TestReadSenml(t *testing.T) {
 	}
 	err = writer.Consume(messages)
 	require.Nil(t, err, fmt.Sprintf("failed to store message to MongoDB: %s", err))
-	reader := reader.New(db)
+	reader := mreader.New(db)
 
 	cases := map[string]struct {
 		chanID   string
@@ -375,7 +375,7 @@ func TestReadJSON(t *testing.T) {
 	require.Nil(t, err, fmt.Sprintf("Creating new MongoDB client expected to succeed: %s.\n", err))
 
 	db := client.Database(testDB)
-	writer := writer.New(db)
+	writer := mwriter.New(db)
 
 	id1, err := idProvider.ID()
 	require.Nil(t, err, fmt.Sprintf("got unexpected error: %s", err))
@@ -452,7 +452,7 @@ func TestReadJSON(t *testing.T) {
 	for i := 0; i < msgsNum; i += 2 {
 		httpMsgs = append(httpMsgs, msgs2[i])
 	}
-	reader := reader.New(db)
+	reader := mreader.New(db)
 
 	cases := map[string]struct {
 		chanID   string
