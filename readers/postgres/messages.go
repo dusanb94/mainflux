@@ -79,7 +79,7 @@ func (tr postgresRepository) ReadAll(chanID string, rpm readers.PageMetadata) (r
 	switch format {
 	case defTable:
 		for rows.Next() {
-			msg := dbMessage{Message: senml.Message{}}
+			msg := senmlMessage{Message: senml.Message{}}
 			if err := rows.StructScan(&msg); err != nil {
 				return readers.MessagesPage{}, errors.Wrap(errReadMessages, err)
 			}
@@ -156,7 +156,7 @@ func fmtCondition(chanID string, rpm readers.PageMetadata) string {
 	return condition
 }
 
-type dbMessage struct {
+type senmlMessage struct {
 	ID string `db:"id"`
 	senml.Message
 }
