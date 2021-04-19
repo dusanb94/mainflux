@@ -186,6 +186,18 @@ func TestReadSenml(t *testing.T) {
 				Messages: fromSenml(queryMsgs),
 			},
 		},
+		"read message with invalid format": {
+			chanID: chanID,
+			pageMeta: readers.PageMetadata{
+				Format: "messagess",
+				Offset: 0,
+				Limit:  uint64(len(queryMsgs)),
+			},
+			page: readers.MessagesPage{
+				Total:    0,
+				Messages: []readers.Message{},
+			},
+		},
 		"read message with protocol": {
 			chanID: chanID,
 			pageMeta: readers.PageMetadata{
