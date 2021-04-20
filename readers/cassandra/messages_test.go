@@ -74,7 +74,7 @@ func TestReadSenml(t *testing.T) {
 	stringMsgs := []senml.Message{}
 	dataMsgs := []senml.Message{}
 	queryMsgs := []senml.Message{}
-	now := float64(time.Now().Unix())
+	now := float64(123456789)
 
 	for i := 0; i < msgsNum; i++ {
 		// Mix possible values as well as value sum.

@@ -44,7 +44,10 @@ func (cr cassandraRepository) ReadAll(chanID string, rpm readers.PageMetadata) (
 		format = rpm.Format
 	}
 
-	q, vals := buildQuery(chanID, rpm)
+	q, vals, err := buildQuery(chanID, rpm)
+	if err != nil {
+		return readers.MessagesPage{}, err
+	}
 
 	selectCQL := fmt.Sprintf(`SELECT channel, subtopic, publisher, protocol, name, unit,
 		value, string_value, bool_value, data_value, sum, time,
@@ -124,16 +127,18 @@ func (cr cassandraRepository) ReadAll(chanID string, rpm readers.PageMetadata) (
 	return page, nil
 }
 
-func buildQuery(chanID string, rpm readers.PageMetadata) (string, []interface{}) {
+func buildQuery(chanID string, rpm readers.PageMetadata) (string, []interface{}, err) {
 	var condCQL string
 	vals := []interface{}{chanID}
 
 	var query map[string]interface{}
 	meta, err := json.Marshal(rpm)
 	if err != nil {
-		return condCQL, vals
+		return "", nil, err
 	}
-	json.Unmarshal(meta, &query)
+	if err := json.Unmarshal(meta, &query); err != nil {
+		return "", nil, err
+	}
 
 	for name, val := range query {
 		switch name {
@@ -159,6 +164,7 @@ func buildQuery(chanID string, rpm readers.PageMetadata) (string, []interface{})
 			vals = append(vals, val)
 			condCQL = fmt.Sprintf(`%s AND data_value = ?`, condCQL)
 		case "from":
+			fmt.Println(val)
 			vals = append(vals, val)
 			condCQL = fmt.Sprintf(`%s AND time >= ?`, condCQL)
 		case "to":
@@ -168,7 +174,7 @@ func buildQuery(chanID string, rpm readers.PageMetadata) (string, []interface{})
 	}
 	vals = append(vals, rpm.Offset+rpm.Limit)
 
-	return condCQL, vals
+	return condCQL, vals, nil
 }
 
 type jsonMessage struct {
