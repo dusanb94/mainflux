@@ -61,7 +61,12 @@ func MakeHandler(svc readers.MessageRepository, tc mainflux.ThingsServiceClient,
 		encodeResponse,
 		opts...,
 	))
-
+	mux.Post("/channels/:chanID/messages/search", kithttp.NewServer(
+		listMessagesEndpoint(svc),
+		decodeSearch,
+		encodeResponse,
+		opts...,
+	))
 	mux.GetFunc("/version", mainflux.Version(svcName))
 	mux.Handle("/metrics", promhttp.Handler())
 
@@ -168,6 +173,19 @@ func decodeList(_ context.Context, r *http.Request) (interface{}, error) {
 	}
 	if err == nil {
 		req.pageMeta.BoolValue = vb
+	}
+
+	return req, nil
+}
+
+func decodeSearch(_ context.Context, r *http.Request) (interface{}, error) {
+	var pm readers.PageMetadata
+	if err := json.NewDecoder(r.Body).Decode(&pm); err != nil {
+		return nil, err
+	}
+
+	req := listMessagesReq{
+		pageMeta: pm,
 	}
 
 	return req, nil
