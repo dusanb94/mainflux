@@ -6,14 +6,15 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/go-zoo/bone"
+	"github.com/gorilla/schema"
 	"github.com/mainflux/mainflux"
-	"github.com/mainflux/mainflux/internal/httputil"
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/readers"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -40,6 +41,21 @@ const (
 	defOffset      = 0
 	defFormat      = "messages"
 )
+
+var listKeys = []string{
+	"limit",
+	"format",
+	"subtopic",
+	"publisher",
+	"protocol",
+	"name",
+	"v",
+	"vs",
+	"vd",
+	"comparator",
+	"from",
+	"to",
+}
 
 var (
 	errUnauthorizedAccess = errors.New("missing or invalid credentials provided")
@@ -83,110 +99,48 @@ func decodeList(_ context.Context, r *http.Request) (interface{}, error) {
 		return nil, err
 	}
 
-	offset, err := httputil.ReadUintQuery(r, offsetKey, defOffset)
-	if err != nil {
+	var q query
+	if err := schema.NewDecoder().Decode(&q, r.URL.Query()); err != nil {
 		return nil, err
 	}
 
-	limit, err := httputil.ReadUintQuery(r, limitKey, defLimit)
+	if q.Limit == 0 {
+		q.Limit = defLimit
+	}
+	if q.Format == "" {
+		q.Format = defFormat
+	}
+
+	meta, err := q.toPageMeta()
 	if err != nil {
 		return nil, err
 	}
-
-	format, err := httputil.ReadStringQuery(r, formatKey, defFormat)
-	if err != nil {
-		return nil, err
-	}
-
-	subtopic, err := httputil.ReadStringQuery(r, subtopicKey, "")
-	if err != nil {
-		return nil, err
-	}
-
-	publisher, err := httputil.ReadStringQuery(r, publisherKey, "")
-	if err != nil {
-		return nil, err
-	}
-
-	protocol, err := httputil.ReadStringQuery(r, protocolKey, "")
-	if err != nil {
-		return nil, err
-	}
-
-	name, err := httputil.ReadStringQuery(r, nameKey, "")
-	if err != nil {
-		return nil, err
-	}
-
-	v, err := httputil.ReadFloatQuery(r, valueKey, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	comparator, err := httputil.ReadStringQuery(r, comparatorKey, "")
-	if err != nil {
-		return nil, err
-	}
-
-	vs, err := httputil.ReadStringQuery(r, stringValueKey, "")
-	if err != nil {
-		return nil, err
-	}
-
-	vd, err := httputil.ReadStringQuery(r, dataValueKey, "")
-	if err != nil {
-		return nil, err
-	}
-
-	from, err := httputil.ReadFloatQuery(r, fromKey, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	to, err := httputil.ReadFloatQuery(r, toKey, 0)
-	if err != nil {
-		return nil, err
-	}
-
+	meta.ChanID = chanID
 	req := listMessagesReq{
-		chanID: chanID,
-		pageMeta: readers.PageMetadata{
-			Offset:      offset,
-			Limit:       limit,
-			Format:      format,
-			Subtopic:    subtopic,
-			Publisher:   publisher,
-			Protocol:    protocol,
-			Name:        name,
-			Value:       v,
-			Comparator:  comparator,
-			StringValue: vs,
-			DataValue:   vd,
-			From:        from,
-			To:          to,
-		},
-	}
-
-	vb, err := readBoolValueQuery(r, "vb")
-	if err != nil && err != errors.ErrNotFoundParam {
-		return nil, err
-	}
-	if err == nil {
-		req.pageMeta.BoolValue = vb
+		pageMeta: meta,
 	}
 
 	return req, nil
 }
 
 func decodeSearch(_ context.Context, r *http.Request) (interface{}, error) {
+	chanID := bone.GetValue(r, "chanID")
+	if chanID == "" {
+		return nil, errors.ErrInvalidQueryParams
+	}
+	if err := authorize(r, chanID); err != nil {
+		return nil, err
+	}
+
 	var pm readers.PageMetadata
 	if err := json.NewDecoder(r.Body).Decode(&pm); err != nil {
 		return nil, err
 	}
-
+	pm.ChanID = chanID
 	req := listMessagesReq{
-		pageMeta: pm,
+		pm,
 	}
+	fmt.Println("search:", req)
 
 	return req, nil
 }
@@ -198,9 +152,7 @@ func encodeResponse(_ context.Context, w http.ResponseWriter, response interface
 		for k, v := range ar.Headers() {
 			w.Header().Set(k, v)
 		}
-
 		w.WriteHeader(ar.Code())
-
 		if ar.Empty() {
 			return nil
 		}
@@ -265,4 +217,17 @@ func readBoolValueQuery(r *http.Request, key string) (bool, error) {
 	}
 
 	return b, nil
+}
+
+func readQueryParam(r *http.Request, key string) (string, error) {
+	vals := bone.GetQuery(r, key)
+	if len(vals) > 1 {
+		return "", errors.ErrInvalidQueryParams
+	}
+
+	if len(vals) == 0 {
+		return "", nil
+	}
+
+	return vals[0], nil
 }
