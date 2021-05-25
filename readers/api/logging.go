@@ -30,7 +30,7 @@ func LoggingMiddleware(svc readers.MessageRepository, logger logger.Logger) read
 
 func (lm *loggingMiddleware) ReadAll(pm readers.PageMetadata) (page readers.MessagesPage, err error) {
 	defer func(begin time.Time) {
-		message := fmt.Sprintf("Method read_all for channel %s took %s to complete", pm.ChanID, time.Since(begin))
+		message := fmt.Sprintf("Method read_all for channel %s took %s to complete", pm.Query["channel"], time.Since(begin))
 		if err != nil {
 			lm.logger.Warn(fmt.Sprintf("%s with error: %s.", message, err))
 			return

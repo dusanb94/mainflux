@@ -16,10 +16,9 @@ func listMessagesEndpoint(svc readers.MessageRepository) endpoint.Endpoint {
 		req := request.(listMessagesReq)
 
 		if err := req.validate(); err != nil {
-			fmt.Println("ERR:", err)
 			return nil, err
 		}
-
+		fmt.Println("LIST:", req.pageMeta)
 		page, err := svc.ReadAll(req.pageMeta)
 		if err != nil {
 			return nil, err

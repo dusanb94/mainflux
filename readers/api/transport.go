@@ -90,6 +90,7 @@ func MakeHandler(svc readers.MessageRepository, tc mainflux.ThingsServiceClient,
 }
 
 func decodeList(_ context.Context, r *http.Request) (interface{}, error) {
+	fmt.Println("Decoding list...")
 	chanID := bone.GetValue(r, "chanID")
 	if chanID == "" {
 		return nil, errors.ErrInvalidQueryParams
@@ -101,21 +102,23 @@ func decodeList(_ context.Context, r *http.Request) (interface{}, error) {
 
 	var q query
 	if err := schema.NewDecoder().Decode(&q, r.URL.Query()); err != nil {
+		fmt.Println("ERROR DECODE PARMAS:", err)
 		return nil, err
 	}
-
-	if q.Limit == 0 {
-		q.Limit = defLimit
-	}
+	q.ChannelID = chanID
 	if q.Format == "" {
 		q.Format = defFormat
+	}
+	if q.Limit == 0 {
+		q.Limit = defLimit
 	}
 
 	meta, err := q.toPageMeta()
 	if err != nil {
+		fmt.Println("ERROR DECODE meta", err)
 		return nil, err
 	}
-	meta.ChanID = chanID
+	// meta.ChanID = chanID
 	req := listMessagesReq{
 		pageMeta: meta,
 	}
@@ -136,7 +139,8 @@ func decodeSearch(_ context.Context, r *http.Request) (interface{}, error) {
 	if err := json.NewDecoder(r.Body).Decode(&pm); err != nil {
 		return nil, err
 	}
-	pm.ChanID = chanID
+	// pm.ChanID = chanID
+	pm["channel"] = chanID
 	req := listMessagesReq{
 		pm,
 	}

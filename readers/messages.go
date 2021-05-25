@@ -39,25 +39,49 @@ type MessagesPage struct {
 	Messages []Message
 }
 
-// PageMetadata represents the parameters used to create database queries
-type PageMetadata struct {
-	ChanID    string `json:"channel_id"`
-	Offset    uint64 `json:"offset"`
-	Limit     uint64 `json:"limit"`
-	Subtopic  string `json:"subtopic,omitempty"`
-	Publisher string `json:"publisher,omitempty"`
-	Protocol  string `json:"protocol,omitempty"`
-	Format    string `json:"format,omitempty"`
-	// Name        string                 `json:"name,omitempty"`
-	// Value       float64                `json:"v,omitempty"`
-	// Comparator  string                 `json:"comparator,omitempty"`
-	// BoolValue   bool                   `json:"vb,omitempty"`
-	// StringValue string                 `json:"vs,omitempty"`
-	// DataValue   string                 `json:"vd,omitempty"`
-	// From        float64                `json:"from,omitempty"`
-	// To          float64                `json:"to,omitempty"`
-	Query map[string]interface{} `json:"query,omitempty"`
-}
+// PageMetadata represents the parameters used to create database queries.
+// There are standard fields such as Channel ID nad Publisher, but also
+// optional fields depending on message format.
+// type PageMetadata struct {
+// 	// ChanID string `json:"channel_id"`
+// 	Offset uint64 `json:"offset"`
+// 	Limit  uint64 `json:"limit"`
+// 	// Subtopic  string `json:"subtopic,omitempty"`
+// 	// Publisher string `json:"publisher,omitempty"`
+// 	// Protocol  string `json:"protocol,omitempty"`
+// 	// Format    string `json:"format,omitempty"`
+// 	// Name        string                 `json:"name,omitempty"`
+// 	// Value       float64                `json:"v,omitempty"`
+// 	// Comparator  string                 `json:"comparator,omitempty"`
+// 	// BoolValue   bool                   `json:"vb,omitempty"`
+// 	// StringValue string                 `json:"vs,omitempty"`
+// 	// DataValue   string                 `json:"vd,omitempty"`
+// 	// From        float64                `json:"from,omitempty"`
+// 	// To          float64                `json:"to,omitempty"`
+// 	Query map[string]interface{} `json:"query,omitempty"`
+// }
+
+type PageMetadata map[string]interface{}
+
+// func (pm PageMetadata) ToQuery() map[string]interface{} {
+// 	// ret := map[string]interface{}{
+// 	// 	"channel": pm.ChanID,
+// 	// }
+// 	ret := make(map[string]interface{})
+// 	// if pm.Subtopic != "" {
+// 	// 	ret["subtopic"] = pm.Subtopic
+// 	// }
+// 	// if pm.Publisher != "" {
+// 	// 	ret["publisher"] = pm.Publisher
+// 	// }
+// 	// if pm.Protocol != "" {
+// 	// 	ret["protocol"] = pm.Protocol
+// 	// }
+// 	for k, v := range pm.Query {
+// 		ret[k] = v
+// 	}
+// 	return ret
+// }
 
 // type PageMetadata map[string]interface{}s
 
