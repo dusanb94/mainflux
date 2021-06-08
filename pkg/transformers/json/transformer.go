@@ -55,11 +55,7 @@ func transformer(msg messaging.Message) (interface{}, error) {
 	}
 	switch p := payload.(type) {
 	case map[string]interface{}:
-		flat, err := Flatten(p)
-		if err != nil {
-			return nil, errors.Wrap(ErrTransform, err)
-		}
-		ret.Payload = flat
+		ret.Payload = p
 		return Messages{[]Message{ret}, format}, nil
 	case []interface{}:
 		res := []Message{}
@@ -69,12 +65,8 @@ func transformer(msg messaging.Message) (interface{}, error) {
 			if !ok {
 				return nil, errors.Wrap(ErrTransform, errInvalidNestedJSON)
 			}
-			flat, err := Flatten(v)
-			if err != nil {
-				return nil, errors.Wrap(ErrTransform, err)
-			}
 			newMsg := ret
-			newMsg.Payload = flat
+			newMsg.Payload = v
 			res = append(res, newMsg)
 		}
 		return Messages{res, format}, nil
